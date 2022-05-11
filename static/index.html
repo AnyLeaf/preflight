@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AnyLeaf Preflight</title>
+
+    <link rel="stylesheet" href="style.css">
+    <script src="code.js"></script>
+</head>
+<body>
+
+<div style="display: flex; flex-direction: column; align-items: center">
+    <h1>AnyLeaf Preflight</h1>
+
+    <h2>Attitude</h2>
+    <div class="attitude-layout">
+        <div style="display: flex;">
+            <h2>Pitch</h2>
+            <h3 id="pitch-reading"></h3>
+        </div>
+
+        
+        <div style="display: flex;">
+            <h2>Roll</h2>
+            <h3 id="roll-reading"></h3>
+        </div>
+
+        
+        <div style="display: flex;">
+            <h2>Yaw</h2>
+            <h3 id="yaw-reading"></h3>
+        </div>
+
+    </div>
+
+    <h2>Controls</h2>
+    <div>
+        <div  class="controls-layout">
+            <div style="display: flex;">
+                <h2>Roll control</h2>
+                <h3 id="control-roll-reading"></h3>
+            </div>
+            
+            <div style="display: flex;">
+                <h2>Pitch control</h2>
+                <h3 id="control-pitch-reading"></h3>
+            </div>
+    
+            
+            <div style="display: flex;">
+                <h2>Yaw control</h2>
+                <h3 id="control-yaw-reading"></h3>
+            </div>
+
+            <div style="display: flex;">
+                <h2>Throttle control</h2>
+                <h3 id="control-throttle-reading"></h3>
+            </div>
+
+            <div style="display: flex;">
+                <h2>Arm switch</h2>
+                <h3 id="control-arm-reading"></h3>
+            </div>
+
+            <div style="display: flex;">
+                <h2>Mode control</h2>
+                <h3 id="control-mode-reading"></h3>
+            </div>
+
+        </div>
+    </div>
+
+    
+    <h2>Motors</h2>
+    <div>
+
+        <div  class="controls-layout">
+            <div style="display: flex;">
+                <h2>Motor 1</h2>
+            </div>
+            
+            <div style="display: flex;">
+                <h2>Motor 2</h2>
+            </div>
+            
+            <div style="display: flex;">
+                <h2>Motor 3</h2>
+            </div>
+
+            <div style="display: flex;">
+                <h2>Motor 4</h2>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>
+
+<script>
+    window.onload = function() {
+        // The calls we make on the frontend don't directly trigger a reading pull
+        // from the FC; they get the latest the server has cached.
+        setInterval(update_readings, 500)
+    }
+</script>
