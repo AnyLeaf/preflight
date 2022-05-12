@@ -11,7 +11,7 @@ function format(val, precision) {
 function update_readings() {
     // Request readings, and update the display
 
-    fetch("/api/readings", {
+    fetch("/api/data", {
         method: "GET",
         headers: {
             "X-CSRFToken": getCookie(),
@@ -27,20 +27,16 @@ function update_readings() {
             // todo: Select units
 
             // todo: Handle errors; both data connection, and sensor errors
-            if (r.pH.hasOwnProperty('Ok')) {
-                document.getElementById("ph-reading").textContent = format(r.pH.Ok, 1)
+            if (r.pitch.hasOwnProperty('Ok')) {
+                document.getElementById("pitch-reading").textContent = format(r.pitch.Ok, 1)
             }
 
-            if (r.T.hasOwnProperty('Ok')) {
-                document.getElementById("temp-reading").textContent = format(r.T.Ok, 1)
+            if (r.roll.hasOwnProperty('Ok')) {
+                document.getElementById("roll-reading").textContent = format(r.roll.Ok, 1)
             }
 
-            if (r.ec.hasOwnProperty('Ok')) {
-                document.getElementById("ec-reading").textContent = format(r.ec.Ok * 1000000, 0)
-            }
-
-            if (r.ORP.hasOwnProperty('Ok')) {
-                document.getElementById("orp-reading").textContent = format(disp = r.ORP.Ok, 0)
+            if (r.yaw.hasOwnProperty('Ok')) {
+                document.getElementById("yaw-reading").textContent = format(r.pitch.Ok, 0)
             }
 
         })
