@@ -7,11 +7,12 @@ pub const PARAMS_SIZE: usize = 76; // + message type, payload len, and crc.
 pub const CONTROLS_SIZE: usize = 18; // + message type, payload len, and crc.
 
 pub const MAX_PAYLOAD_SIZE: usize = PARAMS_SIZE; // For Params.
-pub const MAX_PACKET_SIZE: usize = MAX_PAYLOAD_SIZE + 3; // + message type, payload len, and crc.
+pub const MAX_PACKET_SIZE: usize = MAX_PAYLOAD_SIZE + 2; // + message type, payload len, and crc.
 
 pub struct DecodeError {}
 
-pub const REFRESH_INTERVAL: u32 = 200; // Time between querying the FC for readings in ms.
+ // Time between querying the FC for readings, in ms.
+pub const REFRESH_INTERVAL: u32 = 50;
 
 use num_enum::TryFromPrimitive; // Enum from integer
 
@@ -19,7 +20,7 @@ use serde::Serialize;
 
 // Note that serialize, and for ArmStatus, default, are not part of the firmware
 
-#[derive(Clone, Copy, PartialEq, Serialize)]
+#[derive(Clone, Copy, PartialEq, Serialize, TryFromPrimitive)]
 #[repr(u8)]
 /// For the switch position. We interpret actual mode from this, and other data, like prescense of GPS.
 /// val is for passing over USB serial.
@@ -37,7 +38,7 @@ impl Default for InputModeSwitch {
 }
 
 #[repr(u8)]
-#[derive(Clone, Copy, PartialEq, Serialize)]
+#[derive(Clone, Copy, PartialEq, Serialize, TryFromPrimitive)]
 pub enum ArmStatus {
     /// Motors are [pre]disarmed
     Disarmed = 0,
@@ -88,7 +89,7 @@ pub struct Packet {
 }
 
 /// Represents channel data in our end-use format.
-#[derive(Default, Serialize)]
+#[derive(Default, Serialize, Clone)]
 pub struct ChannelData {
     /// Aileron, -1. to 1.
     pub roll: f32,
@@ -105,7 +106,7 @@ pub struct ChannelData {
 }
 
 /// Represents a first-order status of the drone. todo: What grid/reference are we using?
-#[derive(Default, Serialize)]
+#[derive(Default, Serialize, Clone)]
 pub struct Params {
     // todo: Do we want to use this full struct, or store multiple (3+) instantaneous ones?
     pub s_x: f32,
@@ -136,4 +137,26 @@ pub struct Params {
     pub a_pitch: f32,
     pub a_roll: f32,
     pub a_yaw: f32,
+}
+
+pub fn crc_init(lut: &mut [u8; 256], poly: u8) {
+    for i in 0..256 {
+        let mut crc = i as u8;
+        for _ in 0..8 {
+            crc = (crc << 1) ^ (if (crc & 0x80) > 0 { poly } else { 0 });
+        }
+        lut[i] = crc & 0xff;
+    }
+}
+
+pub fn calc_crc(lut: &[u8; 256], data: &[u8], mut size: u8) -> u8 {
+    let mut crc = 0;
+    let mut i = 0;
+
+    while size > 0 {
+        size -= 1;
+        crc = lut[(crc ^ data[i]) as usize];
+        i += 1;
+    }
+    crc
 }

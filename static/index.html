@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>AnyLeaf Preflight</title>
+    <title>Preflight</title>
 
     <link rel="stylesheet" href="style.css">
     <script src="code.js"></script>
@@ -15,20 +15,37 @@
     <h2>Attitude</h2>
     <div class="attitude-layout">
         <div style="display: flex;">
-            <h2>Pitch</h2>
+            <h3 style="margin-right: 10px;">Pitch</h3>
             <h3 id="pitch-reading"></h3>
         </div>
 
-        
+
         <div style="display: flex;">
-            <h2>Roll</h2>
+            <h3 style="margin-right: 10px;">Roll</h3>
             <h3 id="roll-reading"></h3>
         </div>
 
-        
+
         <div style="display: flex;">
-            <h2>Yaw</h2>
+            <h3 style="margin-right: 10px;">Yaw</h3>
             <h3 id="yaw-reading"></h3>
+        </div>
+
+        <div style="display: flex;">
+            <h3 style="margin-right: 10px;">Pitch</h3>
+            <h3 id="pitch-rate-reading"></h3>
+        </div>
+
+
+        <div style="display: flex;">
+            <h3 style="margin-right: 10px;">Roll</h3>
+            <h3 id="roll-rate-reading"></h3>
+        </div>
+
+
+        <div style="display: flex;">
+            <h3 style="margin-right: 10px;">Yaw</h3>
+            <h3 id="yaw--rate-reading"></h3>
         </div>
 
     </div>
@@ -37,61 +54,73 @@
     <div>
         <div  class="controls-layout">
             <div style="display: flex;">
-                <h2>Roll control</h2>
+                <h3 style="margin-right: 10px;">Roll control</h3>
                 <h3 id="control-roll-reading"></h3>
             </div>
-            
+
             <div style="display: flex;">
-                <h2>Pitch control</h2>
+                <h3 style="margin-right: 10px;">Pitch control</h3>
                 <h3 id="control-pitch-reading"></h3>
             </div>
-    
-            
+
             <div style="display: flex;">
-                <h2>Yaw control</h2>
+                <h3 style="margin-right: 10px;">Yaw control</h3>
                 <h3 id="control-yaw-reading"></h3>
             </div>
 
             <div style="display: flex;">
-                <h2>Throttle control</h2>
+                <h3 style="margin-right: 10px;">Throttle control</h3>
                 <h3 id="control-throttle-reading"></h3>
             </div>
 
             <div style="display: flex;">
-                <h2>Arm switch</h2>
+                <h3 style="margin-right: 10px;">Arm switch</h3>
                 <h3 id="control-arm-reading"></h3>
             </div>
 
             <div style="display: flex;">
-                <h2>Mode control</h2>
+                <h3 style="margin-right: 10px;">Mode control</h3>
                 <h3 id="control-mode-reading"></h3>
             </div>
 
         </div>
     </div>
 
-    
-    <h2>Motors</h2>
-    <div>
 
-        <div  class="controls-layout">
-            <div style="display: flex;">
-                <h2>Motor 1</h2>
-            </div>
-            
-            <div style="display: flex;">
-                <h2>Motor 2</h2>
-            </div>
-            
-            <div style="display: flex;">
-                <h2>Motor 3</h2>
-            </div>
+    <h2 style="margin-top: 100px;">Motors</h2>
 
-            <div style="display: flex;">
-                <h2>Motor 4</h2>
-            </div>
+    <button
+            style="background-color: #e18888;
+            padding: 20px;
+            cursor: pointer;
+"
+        onclick="armMotors()"
+    >
+        ⚠️Enable motors. Don't do this if props are on!⚠️
+    </button>
 
+    <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;">
+
+        <div style="display: flex; flex-direction: column; grid-column: 1 / 2; grid-row: 1 / 2;">
+            <h2>Forward-left</h2>
+            <h3>Direction: <span>Normal</span></h3>
         </div>
+
+        <div style="display: flex; flex-direction: column; grid-column: 2 / 3; grid-row: 1 / 2;">
+            <h2>Forward-right</h2>
+            <h3>Direction: <span>Normal</span></h3>
+        </div>
+
+        <div style="display: flex; flex-direction: column; grid-column: 1 / 2; grid-row: 2 / 3;">
+            <h2>Aft-left</h2>
+            <h3>Direction: <span>Normal</span></h3>
+        </div>
+
+        <div style="display: flex; flex-direction: column; grid-column: 2 / 3; grid-row: 2 / 3;">
+            <h2>Aft-right</h2>
+            <h3>Direction: <span>Normal</span></h3>
+        </div>
+
     </div>
 
 </div>
@@ -103,6 +132,6 @@
     window.onload = function() {
         // The calls we make on the frontend don't directly trigger a reading pull
         // from the FC; they get the latest the server has cached.
-        setInterval(update_readings, 500)
+        setInterval(update_readings, 100)
     }
 </script>

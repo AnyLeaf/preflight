@@ -11,7 +11,12 @@ use serde_json;
 
 use rocket_contrib::serve::StaticFiles;
 
-use std::{convert::TryInto, io, time::{Duration, Instant}};
+use std::{
+    convert::TryInto,
+    f32::consts::TAU,
+    io,
+    time::{Duration, Instant},
+};
 
 use chrono;
 
@@ -27,8 +32,20 @@ pub static mut CONTROLS: Option<ChannelData> = None;
 pub static mut LAST_PARAMS_UPDATE: Option<Instant> = None;
 pub static mut LAST_CONTROLS_UPDATE: Option<Instant> = None;
 
+const FC_SERIAL_NUMBER: &'static str = "AN";
+
 const BAUD: u32 = 9_600;
 
+/// Convert radians to degrees
+fn to_degrees(v: f32) -> f32 {
+    v * 360. / TAU
+}
+
+#[derive(Serialize)]
+struct Data {
+    params: Params,
+    controls: ChannelData,
+}
 
 // Code in this section is a reverse of buffer <--> struct conversion in `usb_cfg`.
 
@@ -37,40 +54,52 @@ impl From<[u8; PARAMS_SIZE]> for Params {
     fn from(p: [u8; PARAMS_SIZE]) -> Self {
         Params {
             s_x: bytes_to_float(&p[0..4]),
-            s_y: bytes_to_float(&p[0..4]),
-            s_z_msl: bytes_to_float(&p[0..4]),
-            s_z_agl: bytes_to_float(&p[0..4]),
-        
-            s_pitch: bytes_to_float(&p[0..4]),
-            s_roll: bytes_to_float(&p[0..4]),
-            s_yaw: bytes_to_float(&p[0..4]),
+            s_y: bytes_to_float(&p[4..8]),
+            s_z_msl: bytes_to_float(&p[8..12]),
+            s_z_agl: bytes_to_float(&p[12..16]),
 
-            v_x: bytes_to_float(&p[0..4]),
-            v_y: bytes_to_float(&p[0..4]),
-            v_z: bytes_to_float(&p[0..4]),
-        
-            v_pitch: bytes_to_float(&p[0..4]),
-            v_roll: bytes_to_float(&p[0..4]),
-            v_yaw: bytes_to_float(&p[0..4]),
-        
-            a_x: bytes_to_float(&p[0..4]),
-            a_y: bytes_to_float(&p[0..4]),
-            a_z: bytes_to_float(&p[0..4]),
-        
-            a_pitch: bytes_to_float(&p[0..4]),
-            a_roll: bytes_to_float(&p[0..4]),
-            a_yaw: bytes_to_float(&p[0..4]),
+            s_pitch: bytes_to_float(&p[16..20]),
+            s_roll: bytes_to_float(&p[20..24]),
+            s_yaw: bytes_to_float(&p[24..28]),
+
+            v_x: bytes_to_float(&p[28..32]),
+            v_y: bytes_to_float(&p[32..36]),
+            v_z: bytes_to_float(&p[36..40]),
+
+            v_pitch: bytes_to_float(&p[40..44]),
+            v_roll: bytes_to_float(&p[44..48]),
+            v_yaw: bytes_to_float(&p[48..52]),
+
+            a_x: bytes_to_float(&p[52..56]),
+            a_y: bytes_to_float(&p[56..60]),
+            a_z: bytes_to_float(&p[60..64]),
+
+            a_pitch: bytes_to_float(&p[64..68]),
+            a_roll: bytes_to_float(&p[68..72]),
+            a_yaw: bytes_to_float(&p[72..76]),
         }
-
     }
 }
 
+impl From<[u8; CONTROLS_SIZE]> for ChannelData {
+    /// 19 f32s x 4 = 76. In the order we have defined in the struct.
+    fn from(p: [u8; CONTROLS_SIZE]) -> Self {
+        ChannelData {
+            pitch: bytes_to_float(&p[0..4]),
+            roll: bytes_to_float(&p[4..8]),
+            yaw: bytes_to_float(&p[8..12]),
+            throttle: bytes_to_float(&p[12..16]),
+
+            arm_status: p[16].try_into().unwrap(),
+            input_mode: p[17].try_into().unwrap(),
+
+        }
+    }
+}
 
 // End code reversed from `quadcopter`.
 
 // todo: Baud cfg?
-
-
 
 // pub enum SerialError {};
 
@@ -81,7 +110,6 @@ pub fn bytes_to_float(bytes: &[u8]) -> f32 {
     f32::from_bits(u32::from_be_bytes(bytes))
 }
 
-
 /// This mirrors that in the Python driver
 struct Fc {
     ser: Box<dyn serialport::SerialPort>,
@@ -89,34 +117,43 @@ struct Fc {
 
 impl Fc {
     pub fn new() -> Result<Self, io::Error> {
-        // if let Ok(ports) = serialport::available_ports() {
-            // for port in &ports {
-                // if let SerialPortType::UsbPort(info) = &port.port_type {
-                //     if let Some(sn) = &info.serial_number {
-                //         if sn == "an" {
-                            let mut port = serialport::new("an", BAUD)
+        if let Ok(ports) = serialport::available_ports() {
+            for port_info in &ports {
+                if let SerialPortType::UsbPort(info) = &port_info.port_type {
+                    if let Some(sn) = &info.serial_number {
+                        if sn == FC_SERIAL_NUMBER {
+                            // println!("Port: {:?}", port_info);
+                            let port = serialport::new(&port_info.port_name, BAUD)
                                 .open()
                                 .expect("Failed to open serial port");
 
+                            return Ok(Self { ser: port });
+                        }
+                    }
+                }
+            }
+        }
 
-                            return Ok(Self {
-                                ser: port,
-                            });
-                        // }
-                    // }
-                // }
-            // }
-        // }
-        // Err(io::Error::new(
-        //     io::ErrorKind::Other,
-        //     "Can't get readings from the FC",
-        // ))
+        Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Unable to connect to the flight controller.",
+        ))
     }
 
-    pub fn read_all(&mut self) -> Result<Params, io::Error> {
-        let crc = 0; // todo!
-        let xmit_buf_params = &[MsgType::ReqParams as u8, crc]; // todo: Don't hard code it like this?
-        let xmit_buf_controls = &[MsgType::ReqControls as u8, crc]; // todo: Don't hard code it like this?
+    pub fn read_all(&mut self) -> Result<(Params, ChannelData), io::Error> {
+        let crc_tx_params = calc_crc(
+            unsafe { &CRC_LUT },
+            &[MsgType::ReqParams as u8],
+            MsgType::ReqParams.payload_size() as u8 + 1,
+        );
+        let crc_tx_controls = calc_crc(
+            unsafe { &CRC_LUT },
+            &[MsgType::ReqControls as u8],
+            MsgType::ReqControls.payload_size() as u8 + 1,
+        );
+
+        let xmit_buf_params = &[MsgType::ReqParams as u8, crc_tx_params];
+        let xmit_buf_controls = &[MsgType::ReqControls as u8, crc_tx_controls];
 
         self.ser.write(xmit_buf_params)?;
 
@@ -124,24 +161,47 @@ impl Fc {
         self.ser.read(&mut rx_buf)?;
 
         // todo: Msg type and CRC check.
-        let mut payload = [0; PARAMS_SIZE];
+        let mut payload_params = [0; PARAMS_SIZE];
         for i in 0..PARAMS_SIZE {
-            payload[i] = rx_buf[i + 1];
+            payload_params[i] = rx_buf[i + 1];
         }
 
-        Ok(payload.into())
+        self.ser.write(xmit_buf_controls)?;
+
+        // let mut rx_buf = [0; CONTROLS_SIZE + 2]; // todo: Bogus leading 1?
+        let mut rx_buf = [0; CONTROLS_SIZE + 3];
+        self.ser.read(&mut rx_buf)?;
+
+        // println!("RX buf: {:?}", rx_buf);
+
+        let mut payload_controls = [0; CONTROLS_SIZE];
+        for i in 0..CONTROLS_SIZE {
+            // payload_controls[i] = rx_buf[i + 1];  // todo: Bogus leading 1?
+            payload_controls[i] = rx_buf[i + 2];
+        }
+
+        // println!("Payload ctrls: {:?}", payload_controls);
+
+        let payload_size = MsgType::ReqParams.payload_size();
+        // let crc_rx_expected = calc_crc(
+        //     unsafe { &CRC_LUT },
+        //     &rx_buf[..payload_size + 1],
+        //     payload_size as u8 + 1,
+        // );
+
+        Ok((payload_params.into(), payload_controls.into()))
     }
 
     /// Close the serial port
     pub fn close(&mut self) {}
 }
 
-/// Get readings over JSON, which we've cached.
+/// Get readings over JSON upon request from the browser, which we've cached.
 #[get("/data")]
-fn view_readings() -> String {
+fn send_data() -> String {
     let last_update = unsafe { LAST_PARAMS_UPDATE.as_ref().unwrap() };
 
-    // Only update the readings from the WM if we're past the last updated thresh.
+    // Only update the readings from the FC if we're past the last updated thresh.
     if (Instant::now() - *last_update) > Duration::new(0, REFRESH_INTERVAL * 1_000_000) {
         if let Err(_) = get_data() {
             // todo: Is this normal? Seems harmless, but I'd like to
@@ -152,10 +212,26 @@ fn view_readings() -> String {
         unsafe { LAST_PARAMS_UPDATE = Some(Instant::now()) };
     }
 
-    let readings = unsafe { &PARAMS.as_ref().unwrap() };
-    return serde_json::to_string(readings).unwrap_or("Problem taking readings".into());
-    // return serde_json::to_string(readings).unwrap_or("Problem taking readings".into());
+    // let params = unsafe { &PARAMS.as_ref().unwrap() };
+    // let controls = unsafe { &CONTROLS.as_ref().unwrap() };
+
+    let data = unsafe { Data {
+        params: PARAMS.clone().unwrap(),
+        controls:CONTROLS.clone().unwrap(),
+    } };
+
+    return serde_json::to_string(&data).unwrap_or("Problem serializing data".into());
 }
+
+/// Get readings over JSON upon request from the browser, which we've cached.
+#[post("/arm_motors")]
+fn arm_motors() {
+    println!("Arming motors...");
+
+    // return "Test";
+}
+
+
 
 /// Request readings from the FC over USB/serial. Cache them as a
 /// global variable. Requesting the readings directly from the frontend could result in
@@ -165,9 +241,12 @@ fn get_data() -> Result<(), io::Error> {
     let fc_ = Fc::new();
 
     if let Ok(mut fc) = fc_ {
-        let params = fc.read_all().unwrap_or_default();
+        let (params, controls) = fc.read_all().unwrap_or_default();
+
         fc.close();
+
         unsafe { PARAMS = Some(params) };
+        unsafe { CONTROLS = Some(controls) };
         Ok(())
     } else {
         Err(io::Error::new(
@@ -182,6 +261,8 @@ fn main() {
     unsafe { CONTROLS = Some(Default::default()) };
     unsafe { LAST_PARAMS_UPDATE = Some(Instant::now()) };
     unsafe { LAST_CONTROLS_UPDATE = Some(Instant::now()) };
+
+    crc_init(unsafe { &mut CRC_LUT }, CRC_POLY);
 
     println!(
         "AnyLeaf Preflight has launched. You can connect by opening `localhost` in a \
@@ -199,6 +280,6 @@ fn main() {
 
     rocket::custom(config)
         .mount("/", StaticFiles::from("static"))
-        .mount("/api", routes![view_readings])
+        .mount("/api", routes![send_data, arm_motors])
         .launch();
 }
