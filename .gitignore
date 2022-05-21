@@ -4,3 +4,5 @@
 # Pycharm
 *.iws
 workspace.xml
+
+/static/three.min.js

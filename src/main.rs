@@ -4,7 +4,11 @@
 #[macro_use]
 extern crate rocket;
 
-use rocket::config::{Config, Environment, LoggingLevel};
+use rocket::{
+    Outcome::*, Request,
+    data::{Outcome, Data, FromDataSimple},
+    config::{Config, Environment, LoggingLevel}
+};
 
 use serde::Serialize;
 use serde_json;
@@ -17,6 +21,7 @@ use std::{
     io,
     time::{Duration, Instant},
 };
+use std::io::Read;
 
 use chrono;
 
@@ -27,7 +32,8 @@ mod from_firmware;
 
 use from_firmware::*;
 
-pub static mut PARAMS: Option<Params> = None;
+// pub static mut PARAMS: Option<Params> = None;
+pub static mut ATTITUDE: Quaternion = Quaternion { w: 0., x: 0., y: 0., z: 0. };
 pub static mut CONTROLS: Option<ChannelData> = None;
 pub static mut LAST_PARAMS_UPDATE: Option<Instant> = None;
 pub static mut LAST_CONTROLS_UPDATE: Option<Instant> = None;
@@ -42,41 +48,56 @@ fn to_degrees(v: f32) -> f32 {
 }
 
 #[derive(Serialize)]
-struct Data {
-    params: Params,
+struct ReadData {
+    // params: Params,
+    attitude: Quaternion,
     controls: ChannelData,
 }
 
 // Code in this section is a reverse of buffer <--> struct conversion in `usb_cfg`.
 
-impl From<[u8; PARAMS_SIZE]> for Params {
-    /// 19 f32s x 4 = 76. In the order we have defined in the struct.
-    fn from(p: [u8; PARAMS_SIZE]) -> Self {
-        Params {
-            s_x: bytes_to_float(&p[0..4]),
-            s_y: bytes_to_float(&p[4..8]),
-            s_z_msl: bytes_to_float(&p[8..12]),
-            s_z_agl: bytes_to_float(&p[12..16]),
+// impl From<[u8; PARAMS_SIZE]> for Params {
+//     /// 19 f32s x 4 = 76. In the order we have defined in the struct.
+//     fn from(p: [u8; PARAMS_SIZE]) -> Self {
+//         Params {
+//             s_x: bytes_to_float(&p[0..4]),
+//             s_y: bytes_to_float(&p[4..8]),
+//             s_z_msl: bytes_to_float(&p[8..12]),
+//             s_z_agl: bytes_to_float(&p[12..16]),
+//
+//             s_pitch: bytes_to_float(&p[16..20]),
+//             s_roll: bytes_to_float(&p[20..24]),
+//             s_yaw: bytes_to_float(&p[24..28]),
+//
+//             quaternion: bytes_to_float(&p[24..28]),
+//
+//             v_x: bytes_to_float(&p[28..32]),
+//             v_y: bytes_to_float(&p[32..36]),
+//             v_z: bytes_to_float(&p[36..40]),
+//
+//             v_pitch: bytes_to_float(&p[40..44]),
+//             v_roll: bytes_to_float(&p[44..48]),
+//             v_yaw: bytes_to_float(&p[48..52]),
+//
+//             a_x: bytes_to_float(&p[52..56]),
+//             a_y: bytes_to_float(&p[56..60]),
+//             a_z: bytes_to_float(&p[60..64]),
+//
+//             a_pitch: bytes_to_float(&p[64..68]),
+//             a_roll: bytes_to_float(&p[68..72]),
+//             a_yaw: bytes_to_float(&p[72..76]),
+//         }
+//     }
+// }
 
-            s_pitch: bytes_to_float(&p[16..20]),
-            s_roll: bytes_to_float(&p[20..24]),
-            s_yaw: bytes_to_float(&p[24..28]),
-
-            v_x: bytes_to_float(&p[28..32]),
-            v_y: bytes_to_float(&p[32..36]),
-            v_z: bytes_to_float(&p[36..40]),
-
-            v_pitch: bytes_to_float(&p[40..44]),
-            v_roll: bytes_to_float(&p[44..48]),
-            v_yaw: bytes_to_float(&p[48..52]),
-
-            a_x: bytes_to_float(&p[52..56]),
-            a_y: bytes_to_float(&p[56..60]),
-            a_z: bytes_to_float(&p[60..64]),
-
-            a_pitch: bytes_to_float(&p[64..68]),
-            a_roll: bytes_to_float(&p[68..72]),
-            a_yaw: bytes_to_float(&p[72..76]),
+impl From<[u8; ATTITUDE_SIZE]> for Quaternion {
+    /// 4 f32s = 16. In the order we have defined in the struct.
+    fn from(p: [u8; ATTITUDE_SIZE]) -> Self {
+        Quaternion {
+            w: bytes_to_float(&p[0..4]),
+            x: bytes_to_float(&p[4..8]),
+            y: bytes_to_float(&p[8..12]),
+            z: bytes_to_float(&p[12..16]),
         }
     }
 }
@@ -97,6 +118,28 @@ impl From<[u8; CONTROLS_SIZE]> for ChannelData {
     }
 }
 
+impl FromDataSimple for RotorPosition {
+    type Error = String;
+
+    fn from_data(req: &Request, data: Data) -> Outcome<Self, String> {
+        // Ensure the content type is correct before opening the data.
+        // if req.content_type() != Some(&person_ct) {
+        //     return Outcome::Forward(data);
+        // }
+
+        let mut contents = String::new();
+        data.open().read_to_string(&mut contents).unwrap();
+
+        Success(match contents.as_ref() {
+            "front-left" => Self::FrontLeft,
+            "front-right" => Self::FrontRight,
+            "aft-left" => Self::AftLeft,
+            "aft-right" => Self::AftRight,
+            _ => panic!("Invalid motor passed from the frontend."),
+        })
+    }
+}
+
 // End code reversed from `quadcopter`.
 
 // todo: Baud cfg?
@@ -112,7 +155,7 @@ pub fn bytes_to_float(bytes: &[u8]) -> f32 {
 
 /// This mirrors that in the Python driver
 struct Fc {
-    ser: Box<dyn serialport::SerialPort>,
+    pub ser: Box<dyn serialport::SerialPort>,
 }
 
 impl Fc {
@@ -140,7 +183,8 @@ impl Fc {
         ))
     }
 
-    pub fn read_all(&mut self) -> Result<(Params, ChannelData), io::Error> {
+    // pub fn read_all(&mut self) -> Result<(Params, ChannelData), io::Error> {
+    pub fn read_all(&mut self) -> Result<(Quaternion, ChannelData), io::Error> {
         let crc_tx_params = calc_crc(
             unsafe { &CRC_LUT },
             &[MsgType::ReqParams as u8],
@@ -157,14 +201,21 @@ impl Fc {
 
         self.ser.write(xmit_buf_params)?;
 
-        let mut rx_buf = [0; PARAMS_SIZE + 2];
+        // let mut rx_buf = [0; PARAMS_SIZE + 2];
+        let mut rx_buf = [0; ATTITUDE_SIZE + 2];
         self.ser.read(&mut rx_buf)?;
 
         // todo: Msg type and CRC check.
-        let mut payload_params = [0; PARAMS_SIZE];
-        for i in 0..PARAMS_SIZE {
-            payload_params[i] = rx_buf[i + 1];
+        // let mut payload_params = [0; PARAMS_SIZE];
+        // for i in 0..PARAMS_SIZE {
+        //     payload_params[i] = rx_buf[i + 1];
+        // }
+        //
+        let mut payload_attitude = [0; ATTITUDE_SIZE];
+        for i in 0..ATTITUDE_SIZE {
+            payload_attitude[i] = rx_buf[i + 1];
         }
+
 
         self.ser.write(xmit_buf_controls)?;
 
@@ -189,7 +240,34 @@ impl Fc {
         //     payload_size as u8 + 1,
         // );
 
-        Ok((payload_params.into(), payload_controls.into()))
+        // Ok((payload_params.into(), payload_controls.into()))
+        Ok((payload_attitude.into(), payload_controls.into()))
+    }
+
+    pub fn send_arm_command(&mut self) -> Result<(), io::Error> {
+        let msg_type = MsgType::ArmMotors;
+        let crc = calc_crc(
+            unsafe { &CRC_LUT },
+            &[msg_type as u8],
+            msg_type.payload_size() as u8 + 1,
+        );
+        let xmit_buf = &[msg_type as u8, crc];
+        self.ser.write(xmit_buf)?;
+
+        Ok(())
+    }
+
+    pub fn send_disarm_command(&mut self) -> Result<(), io::Error> {
+        let msg_type = MsgType::DisarmMotors;
+        let crc = calc_crc(
+            unsafe { &CRC_LUT },
+            &[msg_type as u8],
+            msg_type.payload_size() as u8 + 1,
+        );
+        let xmit_buf = &[msg_type as u8, crc];
+        self.ser.write(xmit_buf)?;
+
+        Ok(())
     }
 
     /// Close the serial port
@@ -215,21 +293,63 @@ fn send_data() -> String {
     // let params = unsafe { &PARAMS.as_ref().unwrap() };
     // let controls = unsafe { &CONTROLS.as_ref().unwrap() };
 
-    let data = unsafe { Data {
-        params: PARAMS.clone().unwrap(),
+    println!("Attitude; {}", attitude);
+
+    let data = unsafe { ReadData {
+        // params: PARAMS.clone().unwrap(),
+        attitude: ATTITUDE,
         controls:CONTROLS.clone().unwrap(),
     } };
 
     return serde_json::to_string(&data).unwrap_or("Problem serializing data".into());
 }
 
-/// Get readings over JSON upon request from the browser, which we've cached.
+/// Arm all motors, for testing.
 #[post("/arm_motors")]
-fn arm_motors() {
+fn arm_motors() -> Result<(), io::Error> {
     println!("Arming motors...");
 
-    // return "Test";
+    // todo: fc_ should probably be a global of some sort.
+    // todo: DRY!
+    let fc_ = Fc::new();
+
+    if let Ok(mut fc) = fc_ {
+        fc.send_arm_command();
+
+        fc.close();
+
+        Ok(())
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Can't find the flight controller.",
+        ))
+    }
 }
+
+/// Start a motor.
+#[post("/start_motor", data = "<data>")]
+fn start_motor(data: RotorPosition) -> Result<(), io::Error> {
+    println!("Starting motor {:?}", data);
+
+    // todo: fc_ should probably be a global of some sort.
+    // todo: DRY!
+    let fc_ = Fc::new();
+
+    if let Ok(mut fc) = fc_ {
+        fc.send_disarm_command();
+
+        fc.close();
+
+        Ok(())
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Can't find the flight controller.",
+        ))
+    }
+}
+
 
 
 
@@ -238,14 +358,18 @@ fn arm_motors() {
 /// conflicts, where multiple frontends are requesting readings from the WM directly
 /// in too short an interval.
 fn get_data() -> Result<(), io::Error> {
+
+    // todo: fc_ should probably be a global of some sort.
     let fc_ = Fc::new();
 
     if let Ok(mut fc) = fc_ {
-        let (params, controls) = fc.read_all().unwrap_or_default();
+        // let (params, controls) = fc.read_all().unwrap_or_default();
+        let (attitude, controls) = fc.read_all().unwrap_or_default();
 
         fc.close();
 
-        unsafe { PARAMS = Some(params) };
+        // unsafe { PARAMS = Some(params) };
+        unsafe { ATTITUDE = attitude };
         unsafe { CONTROLS = Some(controls) };
         Ok(())
     } else {
@@ -257,7 +381,7 @@ fn get_data() -> Result<(), io::Error> {
 }
 
 fn main() {
-    unsafe { PARAMS = Some(Default::default()) };
+    // unsafe { PARAMS = Some(Default::default()) };
     unsafe { CONTROLS = Some(Default::default()) };
     unsafe { LAST_PARAMS_UPDATE = Some(Instant::now()) };
     unsafe { LAST_CONTROLS_UPDATE = Some(Instant::now()) };
@@ -280,6 +404,6 @@ fn main() {
 
     rocket::custom(config)
         .mount("/", StaticFiles::from("static"))
-        .mount("/api", routes![send_data, arm_motors])
+        .mount("/api", routes![send_data, arm_motors, start_motor])
         .launch();
 }

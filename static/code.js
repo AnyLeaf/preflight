@@ -1,12 +1,19 @@
-let TAU = 6.2831853
+// let TAU = 6.2831853
 
 // Master arm switch for motors. Safety-critical! Limits motors to no more than 10% RPM, but still...
 let MOTORS_ARMED = false
 
 /// Convert radians to degrees
-function toDegrees(v) {
-    return v * 360. / TAU
-}
+// function toDegrees(v) {
+//     return v * 360. / TAU
+// }
+
+let HEADERS = {
+            "X-CSRFToken": getCookie(),
+            "Content-Type": "application/json; charset=UTF-8",
+            Accept: "application/json",
+            "X-Requested-With": "XMLHttpRequest"
+        }
 
 function format(val, precision) {
     // Format as a string, rounded and 0-padded
@@ -23,28 +30,30 @@ function update_readings() {
 
     fetch("/api/data", {
         method: "GET",
-        headers: {
-            "X-CSRFToken": getCookie(),
-            "Content-Type": "application/json; charset=UTF-8",
-            Accept: "application/json",
-            "X-Requested-With": "XMLHttpRequest"
-        },
+        headers: HEADERS,
         credentials: "include",
         // body: JSON.stringify(data)
     })
         .then(response => response.json())
         .then(r => {
-            const params = r.params
+            // const params = r.params
             const controls = r.controls
 
-            // todo: Handle errors; both data connection, and sensor errors
-            document.getElementById("pitch-reading").textContent = format(toDegrees(params.s_pitch), 0)
-            document.getElementById("roll-reading").textContent = format(toDegrees(params.s_roll), 0)
-            document.getElementById("yaw-reading").textContent = format(toDegrees(params.s_yaw), 0)
+            console.log(r.attitude, "Attitude")
 
-            document.getElementById("pitch-rate-reading").textContent = format(toDegrees(params.v_pitch), 0)
-            document.getElementById("roll-rate-reading").textContent = format(toDegrees(params.v_roll), 0)
-            document.getElementById("yaw-rate-reading").textContent = format(toDegrees(params.v_yaw), 0)
+            QUATERNION.w = r.attitude.w
+            QUATERNION.x = r.attitude.x
+            QUATERNION.y = r.attitude.y
+            QUATERNION.z = r.attitude.z
+
+            // todo: Handle errors; both data connection, and sensor errors
+            // document.getElementById("pitch-reading").textContent = format(toDegrees(params.s_pitch), 0)
+            // document.getElementById("roll-reading").textContent = format(toDegrees(params.s_roll), 0)
+            // document.getElementById("yaw-reading").textContent = format(toDegrees(params.s_yaw), 0)
+            //
+            // document.getElementById("pitch-rate-reading").textContent = format(toDegrees(params.v_pitch), 0)
+            // document.getElementById("roll-rate-reading").textContent = format(toDegrees(params.v_roll), 0)
+            // document.getElementById("yaw-rate-reading").textContent = format(toDegrees(params.v_yaw), 0)
 
             document.getElementById("control-roll-reading").textContent = format(controls.roll, 2)
             document.getElementById("control-pitch-reading").textContent = format(controls.pitch, 2)
@@ -61,19 +70,24 @@ function armMotors() {
     // Send a commond to the FC to arm motors.
     fetch("/api/arm_motors", {
         method: "POST",
-        headers: {
-            "X-CSRFToken": getCookie(),
-            "Content-Type": "application/json; charset=UTF-8",
-            Accept: "application/json",
-            "X-Requested-With": "XMLHttpRequest"
-        },
+        headers: HEADERS,
         credentials: "include",
-        body: JSON.stringify({arm: "confirm"})
+        body: "confirm",
     })
         .then(response => response.json())
-        .then(r => {
-            console.log("motors armed!")
-        })
+        .then(r => {})
+}
+
+
+function startMotor(motor) {
+    fetch("/api/start_motor", {
+        method: "POST",
+        headers: HEADERS,
+        credentials: "include",
+        body: motor
+    })
+        .then(response => response.json())
+        .then(r => {})
 }
 
 function getCookie() {
@@ -92,3 +106,36 @@ function getCookie() {
     }
     return cookieValue;
 }
+
+// todo: Put in a function
+// Rendering code below for webgl
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+const renderer = new THREE.WebGLRenderer({alpha: true});
+// renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setSize( 400, 300 );
+
+let container = document.getElementById("attitude-render")
+container.appendChild( renderer.domElement );
+
+const geometry = new THREE.BoxGeometry( 1, 1, 1 );
+const material = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
+const cube = new THREE.Mesh( geometry, material );
+scene.add( cube );
+
+let QUATERNION = new THREE.Quaternion();
+
+
+camera.position.z = 5;
+
+function animateAttitude() {
+	requestAnimationFrame( animateAttitude );
+
+    // console.log("Render")
+
+    cube.rotation.setFromQuaternion(QUATERNION)
+
+	renderer.render( scene, camera );
+}
+animateAttitude();

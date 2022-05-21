@@ -3,6 +3,18 @@ body {
     background-color: #ffffff;
 }
 
+div {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+button {
+    cursor: pointer;
+    padding: 20px;
+    background-color: #a3cc82;
+}
+
 /*@media (min-width: 800px) {*/
 .readings-layout {
     display: grid;
