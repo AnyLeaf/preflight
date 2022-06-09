@@ -55,6 +55,11 @@ function update_readings() {
             // document.getElementById("roll-rate-reading").textContent = format(toDegrees(params.v_roll), 0)
             // document.getElementById("yaw-rate-reading").textContent = format(toDegrees(params.v_yaw), 0)
 
+            document.getElementById("altimeter-reading").textContent = format(r.altimeter, 2)
+
+            document.getElementById("voltage-reading").textContent = format(r.batt_v, 2)
+            document.getElementById("current-reading").textContent = format(controls.r.current, 2)
+
             document.getElementById("control-roll-reading").textContent = format(controls.roll, 2)
             document.getElementById("control-pitch-reading").textContent = format(controls.pitch, 2)
             document.getElementById("control-yaw-reading").textContent = format(controls.yaw, 2)
@@ -129,13 +134,13 @@ let QUATERNION = new THREE.Quaternion();
 
 camera.position.z = 5;
 
-function animateAttitude() {
-	requestAnimationFrame( animateAttitude );
-
-    // console.log("Render")
-
-    cube.rotation.setFromQuaternion(QUATERNION)
-
-	renderer.render( scene, camera );
-}
-animateAttitude();
+// function animateAttitude() {
+// 	requestAnimationFrame( animateAttitude );
+//
+//     // console.log("Render")
+//
+//     cube.rotation.setFromQuaternion(QUATERNION)
+//
+// 	renderer.render( scene, camera );
+// }
+// animateAttitude();

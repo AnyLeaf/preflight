@@ -12,6 +12,8 @@
     <h1>AnyLeaf Preflight</h1>
 
     <h2>Attitude</h2>
+    <p>Verify that the orientation of your quadcoper depicted below is correct. Rotate it
+    in various directions, and confirm that the rendering moves as expected.</p>
 
     <div id="attitude-render">
 <!--    <div class="attitude-layout">-->
@@ -50,6 +52,24 @@
 <!--        </div>-->
 
     </div>
+
+    <h2>Altimeter</h2>
+    <div style="display:flex;">
+<!--        <div style="display: flex;">-->
+        <h3 style="margin-right: 10px;">Altitude, in feet MSL. Altitude in use will show in relation to launch altitude.</h3>
+        <h3 id="altimeter-reading"></h3>
+<!--        </div>-->
+    </flex>
+
+    <h2>Power system</h2>
+        <h3 style="margin-right: 10px;">Battery voltage</h3>
+        <h3 id="voltage-reading"></h3>
+    </h2>
+
+            <h2>Power system</h2>
+        <h3 style="margin-right: 10px;">ESC current</h3>
+        <h3 id="current-reading"></h3>
+    </h2>
 
     <h2>Controls</h2>
     <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; grid-gap: 60px;">
@@ -139,6 +159,6 @@
     window.onload = function() {
         // The calls we make on the frontend don't directly trigger a reading pull
         // from the FC; they get the latest the server has cached.
-        setInterval(update_readings, 100)
+        setInterval(update_readings, 500)
     }
 </script>

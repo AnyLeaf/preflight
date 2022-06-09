@@ -35,6 +35,10 @@ use from_firmware::*;
 // pub static mut PARAMS: Option<Params> = None;
 pub static mut ATTITUDE: Quaternion = Quaternion { w: 0., x: 0., y: 0., z: 0. };
 pub static mut CONTROLS: Option<ChannelData> = None;
+pub static mut ALTIMETER: f32 = 0.;
+pub static mut BATT_V: f32 = 0.;
+pub static mut CURRENT: f32 = 0.;
+
 pub static mut LAST_PARAMS_UPDATE: Option<Instant> = None;
 pub static mut LAST_CONTROLS_UPDATE: Option<Instant> = None;
 
@@ -47,10 +51,12 @@ fn to_degrees(v: f32) -> f32 {
     v * 360. / TAU
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Default)]
 struct ReadData {
-    // params: Params,
     attitude: Quaternion,
+    altimeter: f32,
+    batt_v: f32,
+    current: f32,
     controls: ChannelData,
 }
 
@@ -90,9 +96,9 @@ struct ReadData {
 //     }
 // }
 
-impl From<[u8; ATTITUDE_SIZE]> for Quaternion {
+impl From<[u8; QUATERNION_SIZE]> for Quaternion {
     /// 4 f32s = 16. In the order we have defined in the struct.
-    fn from(p: [u8; ATTITUDE_SIZE]) -> Self {
+    fn from(p: [u8; QUATERNION_SIZE]) -> Self {
         Quaternion {
             w: bytes_to_float(&p[0..4]),
             x: bytes_to_float(&p[4..8]),
@@ -184,7 +190,9 @@ impl Fc {
     }
 
     // pub fn read_all(&mut self) -> Result<(Params, ChannelData), io::Error> {
-    pub fn read_all(&mut self) -> Result<(Quaternion, ChannelData), io::Error> {
+    pub fn read_all(&mut self) -> Result<ReadData, io::Error> {
+        let mut result = ReadData::default();
+
         let crc_tx_params = calc_crc(
             unsafe { &CRC_LUT },
             &[MsgType::ReqParams as u8],
@@ -201,8 +209,7 @@ impl Fc {
 
         self.ser.write(xmit_buf_params)?;
 
-        // let mut rx_buf = [0; PARAMS_SIZE + 2];
-        let mut rx_buf = [0; ATTITUDE_SIZE + 2];
+        let mut rx_buf = [0; PARAMS_SIZE + 2];
         self.ser.read(&mut rx_buf)?;
 
         // todo: Msg type and CRC check.
@@ -211,10 +218,11 @@ impl Fc {
         //     payload_params[i] = rx_buf[i + 1];
         // }
         //
-        let mut payload_attitude = [0; ATTITUDE_SIZE];
-        for i in 0..ATTITUDE_SIZE {
-            payload_attitude[i] = rx_buf[i + 1];
-        }
+        // let mut payload_attitude = [0; ATTITUDE_SIZE];
+        // for i in 0..QUATERNION_SIZE {
+        //     payload_attitude[i] = rx_buf[i + 1];
+        // }
+        result.attitude = rx_buf[0..QUATERNION_SIZE].into();
 
 
         self.ser.write(xmit_buf_controls)?;
@@ -231,6 +239,8 @@ impl Fc {
             payload_controls[i] = rx_buf[i + 2];
         }
 
+        result.controls = payload_controls.into();
+
         // println!("Payload ctrls: {:?}", payload_controls);
 
         let payload_size = MsgType::ReqParams.payload_size();
@@ -241,7 +251,7 @@ impl Fc {
         // );
 
         // Ok((payload_params.into(), payload_controls.into()))
-        Ok((payload_attitude.into(), payload_controls.into()))
+        Ok(result)
     }
 
     pub fn send_arm_command(&mut self) -> Result<(), io::Error> {
@@ -293,11 +303,17 @@ fn send_data() -> String {
     // let params = unsafe { &PARAMS.as_ref().unwrap() };
     // let controls = unsafe { &CONTROLS.as_ref().unwrap() };
 
-    println!("Attitude; {}", attitude);
+    unsafe {
+        println!("Attitude: {} {}", ATTITUDE.w, ATTITUDE.x);
+    }
 
+    // todo: Better way than these globals?
     let data = unsafe { ReadData {
         // params: PARAMS.clone().unwrap(),
         attitude: ATTITUDE,
+        altimeter: ALTIMETER,
+        batt_v: BATT_V,
+        current: CURRENT,
         controls:CONTROLS.clone().unwrap(),
     } };
 
@@ -363,14 +379,19 @@ fn get_data() -> Result<(), io::Error> {
     let fc_ = Fc::new();
 
     if let Ok(mut fc) = fc_ {
-        // let (params, controls) = fc.read_all().unwrap_or_default();
-        let (attitude, controls) = fc.read_all().unwrap_or_default();
+        let data = fc.read_all().unwrap_or_default();
 
         fc.close();
 
         // unsafe { PARAMS = Some(params) };
-        unsafe { ATTITUDE = attitude };
-        unsafe { CONTROLS = Some(controls) };
+        unsafe {
+            ATTITUDE = data.attitude;
+            ALTIMETER = data.altimeter;
+            BATT_V = data.batt_v;
+            CURRENT = data.current;
+            CONTROLS = Some(controls);
+        };
+
         Ok(())
     } else {
         Err(io::Error::new(
