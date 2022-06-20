@@ -36,37 +36,28 @@ function update_readings() {
     })
         .then(response => response.json())
         .then(r => {
-            // const params = r.params
-            const controls = r.controls
+            QUATERNION.w = r.attitude_quat.w
+            QUATERNION.x = r.attitude_quat.x
+            QUATERNION.y = r.attitude_quat.y
+            QUATERNION.z = r.attitude_quat.z
 
-            console.log(r.attitude, "Attitude")
+            document.getElementById("altimeter-reading").textContent = format(r.altimeter, 0)
 
-            QUATERNION.w = r.attitude.w
-            QUATERNION.x = r.attitude.x
-            QUATERNION.y = r.attitude.y
-            QUATERNION.z = r.attitude.z
+            document.getElementById("voltage-reading").textContent = format(r.batt_v, 1)
+            document.getElementById("current-reading").textContent = format(r.current, 1)
 
-            // todo: Handle errors; both data connection, and sensor errors
-            // document.getElementById("pitch-reading").textContent = format(toDegrees(params.s_pitch), 0)
-            // document.getElementById("roll-reading").textContent = format(toDegrees(params.s_roll), 0)
-            // document.getElementById("yaw-reading").textContent = format(toDegrees(params.s_yaw), 0)
-            //
-            // document.getElementById("pitch-rate-reading").textContent = format(toDegrees(params.v_pitch), 0)
-            // document.getElementById("roll-rate-reading").textContent = format(toDegrees(params.v_roll), 0)
-            // document.getElementById("yaw-rate-reading").textContent = format(toDegrees(params.v_yaw), 0)
+            document.getElementById("control-roll-reading").textContent = format(r.controls.roll, 2)
+            document.getElementById("control-pitch-reading").textContent = format(r.controls.pitch, 2)
+            document.getElementById("control-yaw-reading").textContent = format(r.controls.yaw, 2)
+            document.getElementById("control-throttle-reading").textContent = format(r.controls.throttle, 2)
 
-            document.getElementById("altimeter-reading").textContent = format(r.altimeter, 2)
+            document.getElementById("control-arm-reading").textContent = r.controls.arm_status
+            document.getElementById("control-mode-reading").textContent = r.controls.input_mode
 
-            document.getElementById("voltage-reading").textContent = format(r.batt_v, 2)
-            document.getElementById("current-reading").textContent = format(controls.r.current, 2)
-
-            document.getElementById("control-roll-reading").textContent = format(controls.roll, 2)
-            document.getElementById("control-pitch-reading").textContent = format(controls.pitch, 2)
-            document.getElementById("control-yaw-reading").textContent = format(controls.yaw, 2)
-            document.getElementById("control-throttle-reading").textContent = format(controls.throttle, 2)
-
-            document.getElementById("control-arm-reading").textContent = controls.arm_status
-            document.getElementById("control-mode-reading").textContent = controls.input_mode
+            document.getElementById("rssi-1-reading").textContent = "-" + r.link_stats.uplink_rssi_1 + "dB"
+            document.getElementById("rssi-2-reading").textContent = "-" + r.link_stats.uplink_rssi_2 + "dB"
+            document.getElementById("link-quality-reading").textContent = r.link_stats.uplink_link_quality + "%"
+            document.getElementById("snr-reading").textContent = r.link_stats.uplink_snr
 
         })
 }

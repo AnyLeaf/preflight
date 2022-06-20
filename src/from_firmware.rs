@@ -1,14 +1,20 @@
 //! This module contains types etc that are copy+pasted from the firmware.
 
+const F32_BYTES: usize = 4;
+
 pub static mut CRC_LUT: [u8; 256] = [0; 256];
 pub const CRC_POLY: u8 = 0xab;
 
-const QUATERNION_SIZE: usize = F32_BYTES * 4;
-const PARAMS_SIZE: usize = QUATERNION_SIZE + 4 * 3;
-const CONTROLS_SIZE: usize = 18;
+pub const QUATERNION_SIZE: usize = F32_BYTES * 4; // Quaternion (4x4 + altimeter + voltage reading + current reading)
+pub const PARAMS_SIZE: usize = QUATERNION_SIZE + F32_BYTES * 3; //
+pub const CONTROLS_SIZE: usize = 18;
+// pub const LINK_STATS_SIZE: usize = F32_BYTES * 4; // Only the first 4 fields.
+pub const LINK_STATS_SIZE: usize = 4; // Only the first 4 fields.
 
-const PARAMS_PACKET_SIZE: usize = PARAMS_SIZE + 2;
-const CONTROLS_PACKET_SIZE: usize = CONTROLS_SIZE + 2;
+// Packet sizes are payload size + 2. Additional data are message type, and CRC.
+pub const PARAMS_PACKET_SIZE: usize = PARAMS_SIZE + 2;
+pub const CONTROLS_PACKET_SIZE: usize = CONTROLS_SIZE + 2;
+pub const LINK_STATS_PACKET_SIZE: usize = LINK_STATS_SIZE + 2;
 
 pub struct DecodeError {}
 
@@ -60,24 +66,25 @@ pub enum MsgType {
     Ack = 3,
     Controls = 4,
     ReqControls = 5,
-    ArmMotors = 6,
-    DisarmMotors = 7,
-    /// Start a specific motor
-    StartMotor = 8,
-    /// Stop a specific motor
-    StopMotor = 9,
+    LinkStats = 6,
+    ReqLinkStats = 7,
+    ArmMotors = 8,
+    DisarmMotors = 9,
+    StartMotor = 10,
+    StopMotor = 11,
 }
 
 impl MsgType {
     pub fn payload_size(&self) -> usize {
         match self {
-            // Self::Params => PARAMS_SIZE,
-            Self::Params => ATTITUDE_SIZE,
+            Self::Params => PARAMS_SIZE,
             Self::SetMotorDirs => 1, // Packed bits: motors 1-4, R-L. True = CW.
             Self::ReqParams => 0,
             Self::Ack => 0,
             Self::Controls => CONTROLS_SIZE,
             Self::ReqControls => 0,
+            Self::LinkStats => LINK_STATS_SIZE,
+            Self::ReqLinkStats => 0,
             Self::ArmMotors => 0,
             Self::DisarmMotors => 0,
             Self::StartMotor => 1,
@@ -182,4 +189,41 @@ pub struct Quaternion {
     pub x: f32,
     pub y: f32,
     pub z: f32,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum AircraftType {
+    Quadcopter,
+    FlyingWing,
+}
+
+#[derive(Clone, Default, Serialize)]
+/// https://www.expresslrs.org/2.0/faq/#how-many-channels-does-elrs-support
+pub struct LinkStats {
+    /// Timestamp these stats were recorded. (TBD format; processed locally; not part of packet from tx).
+    pub timestamp: u32,
+    /// Uplink - received signal strength antenna 1 (RSSI). RSSI dBm as reported by the RX. Values
+    /// vary depending on mode, antenna quality, output power and distance. Ranges from -128 to 0.
+    pub uplink_rssi_1: u8,
+    /// Uplink - received signal strength antenna 2 (RSSI).  	Second antenna RSSI, used in diversity mode
+    /// (Same range as rssi_1)
+    pub uplink_rssi_2: u8,
+    /// Uplink - link quality (valid packets). The number of successful packets out of the last
+    /// 100 from TX → RX
+    pub uplink_link_quality: u8,
+    /// Uplink - signal-to-noise ratio. SNR reported by the RX. Value varies mostly by radio chip
+    /// and gets lower with distance (once the agc hits its limit)
+    pub uplink_snr: i8,
+    /// Active antenna for diversity RX (0 - 1)
+    pub active_antenna: u8,
+    pub rf_mode: u8,
+    /// Uplink - transmitting power. (mW?) 50mW reported as 0, as CRSF/OpenTX do not have this option
+    pub uplink_tx_power: u8,
+    /// Downlink - received signal strength (RSSI). RSSI dBm of telemetry packets received by TX.
+    pub downlink_rssi: u8,
+    /// Downlink - link quality (valid packets). An LQ indicator of telemetry packets received RX → TX
+    /// (0 - 100)
+    pub downlink_link_quality: u8,
+    /// Downlink - signal-to-noise ratio. 	SNR reported by the TX for telemetry packets
+    pub downlink_snr: i8,
 }

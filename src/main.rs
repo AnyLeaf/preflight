@@ -33,14 +33,19 @@ mod from_firmware;
 use from_firmware::*;
 
 // pub static mut PARAMS: Option<Params> = None;
+// todo: Don't make this static muts. Find some other way.
 pub static mut ATTITUDE: Quaternion = Quaternion { w: 0., x: 0., y: 0., z: 0. };
 pub static mut CONTROLS: Option<ChannelData> = None;
+pub static mut LINK_STATS: Option<LinkStats> = None;
 pub static mut ALTIMETER: f32 = 0.;
 pub static mut BATT_V: f32 = 0.;
 pub static mut CURRENT: f32 = 0.;
 
 pub static mut LAST_PARAMS_UPDATE: Option<Instant> = None;
 pub static mut LAST_CONTROLS_UPDATE: Option<Instant> = None;
+pub static mut LAST_LINK_STATS_UPDATE: Option<Instant> = None;
+
+pub static mut AIRCRAFT_TYPE: AircraftType = AircraftType::Quadcopter;
 
 const FC_SERIAL_NUMBER: &'static str = "AN";
 
@@ -53,11 +58,12 @@ fn to_degrees(v: f32) -> f32 {
 
 #[derive(Serialize, Default)]
 struct ReadData {
-    attitude: Quaternion,
+    attitude_quat: Quaternion,
     altimeter: f32,
     batt_v: f32,
     current: f32,
     controls: ChannelData,
+    link_stats: LinkStats,
 }
 
 // Code in this section is a reverse of buffer <--> struct conversion in `usb_cfg`.
@@ -124,6 +130,24 @@ impl From<[u8; CONTROLS_SIZE]> for ChannelData {
     }
 }
 
+impl From<[u8; LINK_STATS_SIZE]> for LinkStats {
+    /// 4 f32s = 16. In the order we have defined in the struct.
+    fn from(p: [u8; LINK_STATS_SIZE]) -> Self {
+        LinkStats {
+            //     uplink_rssi_1: bytes_to_float(&p[0..4]),
+            //     uplink_rssi_2: bytes_to_float(&p[4..8]),
+            //     uplink_link_quality: bytes_to_float(&p[8..12]),
+            //     uplink_snr: bytes_to_float(&p[12..16]),
+
+            uplink_rssi_1: p[0],
+            uplink_rssi_2: p[0],
+            uplink_link_quality: p[0],
+            uplink_snr: p[0] as i8,
+            ..Default::default() // other fields not used.
+        }
+    }
+}
+
 impl FromDataSimple for RotorPosition {
     type Error = String;
 
@@ -153,7 +177,6 @@ impl FromDataSimple for RotorPosition {
 // pub enum SerialError {};
 
 /// Convert bytes to a float
-/// Copy+pasted from `water_monitor::util`
 pub fn bytes_to_float(bytes: &[u8]) -> f32 {
     let bytes: [u8; 4] = bytes.try_into().unwrap();
     f32::from_bits(u32::from_be_bytes(bytes))
@@ -171,7 +194,6 @@ impl Fc {
                 if let SerialPortType::UsbPort(info) = &port_info.port_type {
                     if let Some(sn) = &info.serial_number {
                         if sn == FC_SERIAL_NUMBER {
-                            // println!("Port: {:?}", port_info);
                             let port = serialport::new(&port_info.port_name, BAUD)
                                 .open()
                                 .expect("Failed to open serial port");
@@ -189,7 +211,8 @@ impl Fc {
         ))
     }
 
-    // pub fn read_all(&mut self) -> Result<(Params, ChannelData), io::Error> {
+    /// Request several types of data from the flight controller over USB serial. Return a struct
+    /// containing the data.
     pub fn read_all(&mut self) -> Result<ReadData, io::Error> {
         let mut result = ReadData::default();
 
@@ -203,43 +226,41 @@ impl Fc {
             &[MsgType::ReqControls as u8],
             MsgType::ReqControls.payload_size() as u8 + 1,
         );
+        let crc_tx_link_stats = calc_crc(
+            unsafe { &CRC_LUT },
+            &[MsgType::ReqLinkStats as u8],
+            MsgType::ReqLinkStats.payload_size() as u8 + 1,
+        );
 
         let xmit_buf_params = &[MsgType::ReqParams as u8, crc_tx_params];
         let xmit_buf_controls = &[MsgType::ReqControls as u8, crc_tx_controls];
+        let xmit_buf_link_stats = &[MsgType::ReqLinkStats as u8, crc_tx_link_stats];
 
         self.ser.write(xmit_buf_params)?;
 
         let mut rx_buf = [0; PARAMS_SIZE + 2];
         self.ser.read(&mut rx_buf)?;
 
-        // todo: Msg type and CRC check.
-        // let mut payload_params = [0; PARAMS_SIZE];
-        // for i in 0..PARAMS_SIZE {
-        //     payload_params[i] = rx_buf[i + 1];
-        // }
-        //
-        // let mut payload_attitude = [0; ATTITUDE_SIZE];
-        // for i in 0..QUATERNION_SIZE {
-        //     payload_attitude[i] = rx_buf[i + 1];
-        // }
-        result.attitude = rx_buf[0..QUATERNION_SIZE].into();
-
+        let attitude_data: [u8; QUATERNION_SIZE] = rx_buf[1..QUATERNION_SIZE + 1].try_into().unwrap();
+        result.attitude_quat = attitude_data.into();
 
         self.ser.write(xmit_buf_controls)?;
 
         // let mut rx_buf = [0; CONTROLS_SIZE + 2]; // todo: Bogus leading 1?
-        let mut rx_buf = [0; CONTROLS_SIZE + 3];
+        let mut rx_buf = [0; CONTROLS_SIZE + 2];
         self.ser.read(&mut rx_buf)?;
 
-        // println!("RX buf: {:?}", rx_buf);
+        let controls_data: [u8; CONTROLS_SIZE] = rx_buf[1..CONTROLS_SIZE + 1].try_into().unwrap();
+        result.controls = controls_data.into();
 
-        let mut payload_controls = [0; CONTROLS_SIZE];
-        for i in 0..CONTROLS_SIZE {
-            // payload_controls[i] = rx_buf[i + 1];  // todo: Bogus leading 1?
-            payload_controls[i] = rx_buf[i + 2];
-        }
+        // todo: DRY between these calls
+        self.ser.write(xmit_buf_link_stats)?;
 
-        result.controls = payload_controls.into();
+        let mut rx_buf = [0; LINK_STATS_SIZE + 2];
+        self.ser.read(&mut rx_buf)?;
+
+        let link_stats_data: [u8; LINK_STATS_SIZE] = rx_buf[1..LINK_STATS_SIZE + 1].try_into().unwrap();
+        result.link_stats = link_stats_data.into();
 
         // println!("Payload ctrls: {:?}", payload_controls);
 
@@ -250,7 +271,6 @@ impl Fc {
         //     payload_size as u8 + 1,
         // );
 
-        // Ok((payload_params.into(), payload_controls.into()))
         Ok(result)
     }
 
@@ -303,18 +323,19 @@ fn send_data() -> String {
     // let params = unsafe { &PARAMS.as_ref().unwrap() };
     // let controls = unsafe { &CONTROLS.as_ref().unwrap() };
 
-    unsafe {
-        println!("Attitude: {} {}", ATTITUDE.w, ATTITUDE.x);
-    }
+    // unsafe {
+    //     println!("Attitude: {} {}", ATTITUDE.w, ATTITUDE.x);
+    // }
 
     // todo: Better way than these globals?
     let data = unsafe { ReadData {
         // params: PARAMS.clone().unwrap(),
-        attitude: ATTITUDE,
+        attitude_quat: ATTITUDE,
         altimeter: ALTIMETER,
         batt_v: BATT_V,
         current: CURRENT,
-        controls:CONTROLS.clone().unwrap(),
+        controls: CONTROLS.clone().unwrap(),
+        link_stats: LINK_STATS.clone().unwrap(),
     } };
 
     return serde_json::to_string(&data).unwrap_or("Problem serializing data".into());
@@ -383,13 +404,13 @@ fn get_data() -> Result<(), io::Error> {
 
         fc.close();
 
-        // unsafe { PARAMS = Some(params) };
         unsafe {
-            ATTITUDE = data.attitude;
+            ATTITUDE = data.attitude_quat;
             ALTIMETER = data.altimeter;
             BATT_V = data.batt_v;
             CURRENT = data.current;
-            CONTROLS = Some(controls);
+            CONTROLS = Some(data.controls);
+            LINK_STATS = Some(data.link_stats);
         };
 
         Ok(())
@@ -403,9 +424,13 @@ fn get_data() -> Result<(), io::Error> {
 
 fn main() {
     // unsafe { PARAMS = Some(Default::default()) };
-    unsafe { CONTROLS = Some(Default::default()) };
-    unsafe { LAST_PARAMS_UPDATE = Some(Instant::now()) };
-    unsafe { LAST_CONTROLS_UPDATE = Some(Instant::now()) };
+    unsafe {
+        CONTROLS = Some(Default::default());
+        LAST_PARAMS_UPDATE = Some(Instant::now());
+        LAST_CONTROLS_UPDATE = Some(Instant::now());
+        CONTROLS = Some(Default::default());
+        LINK_STATS = Some(Default::default());
+    }
 
     crc_init(unsafe { &mut CRC_LUT }, CRC_POLY);
 
