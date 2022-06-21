@@ -5,9 +5,10 @@
 extern crate rocket;
 
 use rocket::{
-    Outcome::*, Request,
-    data::{Outcome, Data, FromDataSimple},
-    config::{Config, Environment, LoggingLevel}
+    config::{Config, Environment, LoggingLevel},
+    data::{Data, FromDataSimple, Outcome},
+    Outcome::*,
+    Request,
 };
 
 use serde::Serialize;
@@ -15,13 +16,13 @@ use serde_json;
 
 use rocket_contrib::serve::StaticFiles;
 
+use std::io::Read;
 use std::{
     convert::TryInto,
     f32::consts::TAU,
     io,
     time::{Duration, Instant},
 };
-use std::io::Read;
 
 use chrono;
 
@@ -34,16 +35,21 @@ use from_firmware::*;
 
 // pub static mut PARAMS: Option<Params> = None;
 // todo: Don't make this static muts. Find some other way.
-pub static mut ATTITUDE: Quaternion = Quaternion { w: 0., x: 0., y: 0., z: 0. };
-pub static mut CONTROLS: Option<ChannelData> = None;
-pub static mut LINK_STATS: Option<LinkStats> = None;
-pub static mut ALTIMETER: f32 = 0.;
-pub static mut BATT_V: f32 = 0.;
-pub static mut CURRENT: f32 = 0.;
+static mut ATTITUDE: Quaternion = Quaternion {
+    w: 0.,
+    x: 0.,
+    y: 0.,
+    z: 0.,
+};
+static mut CONTROLS: Option<ChannelData> = None;
+static mut LINK_STATS: Option<LinkStats> = None;
+static mut ALTIMETER: f32 = 0.;
+static mut BATT_V: f32 = 0.;
+static mut CURRENT: f32 = 0.;
 
-pub static mut LAST_PARAMS_UPDATE: Option<Instant> = None;
-pub static mut LAST_CONTROLS_UPDATE: Option<Instant> = None;
-pub static mut LAST_LINK_STATS_UPDATE: Option<Instant> = None;
+static mut LAST_PARAMS_UPDATE: Option<Instant> = None;
+static mut LAST_CONTROLS_UPDATE: Option<Instant> = None;
+static mut LAST_LINK_STATS_UPDATE: Option<Instant> = None;
 
 pub static mut AIRCRAFT_TYPE: AircraftType = AircraftType::Quadcopter;
 
@@ -125,7 +131,6 @@ impl From<[u8; CONTROLS_SIZE]> for ChannelData {
 
             arm_status: p[16].try_into().unwrap(),
             input_mode: p[17].try_into().unwrap(),
-
         }
     }
 }
@@ -138,7 +143,6 @@ impl From<[u8; LINK_STATS_SIZE]> for LinkStats {
             //     uplink_rssi_2: bytes_to_float(&p[4..8]),
             //     uplink_link_quality: bytes_to_float(&p[8..12]),
             //     uplink_snr: bytes_to_float(&p[12..16]),
-
             uplink_rssi_1: p[0],
             uplink_rssi_2: p[0],
             uplink_link_quality: p[0],
@@ -241,7 +245,8 @@ impl Fc {
         let mut rx_buf = [0; PARAMS_SIZE + 2];
         self.ser.read(&mut rx_buf)?;
 
-        let attitude_data: [u8; QUATERNION_SIZE] = rx_buf[1..QUATERNION_SIZE + 1].try_into().unwrap();
+        let attitude_data: [u8; QUATERNION_SIZE] =
+            rx_buf[1..QUATERNION_SIZE + 1].try_into().unwrap();
         result.attitude_quat = attitude_data.into();
 
         self.ser.write(xmit_buf_controls)?;
@@ -259,7 +264,8 @@ impl Fc {
         let mut rx_buf = [0; LINK_STATS_SIZE + 2];
         self.ser.read(&mut rx_buf)?;
 
-        let link_stats_data: [u8; LINK_STATS_SIZE] = rx_buf[1..LINK_STATS_SIZE + 1].try_into().unwrap();
+        let link_stats_data: [u8; LINK_STATS_SIZE] =
+            rx_buf[1..LINK_STATS_SIZE + 1].try_into().unwrap();
         result.link_stats = link_stats_data.into();
 
         // println!("Payload ctrls: {:?}", payload_controls);
@@ -328,15 +334,17 @@ fn send_data() -> String {
     // }
 
     // todo: Better way than these globals?
-    let data = unsafe { ReadData {
-        // params: PARAMS.clone().unwrap(),
-        attitude_quat: ATTITUDE,
-        altimeter: ALTIMETER,
-        batt_v: BATT_V,
-        current: CURRENT,
-        controls: CONTROLS.clone().unwrap(),
-        link_stats: LINK_STATS.clone().unwrap(),
-    } };
+    let data = unsafe {
+        ReadData {
+            // params: PARAMS.clone().unwrap(),
+            attitude_quat: ATTITUDE,
+            altimeter: ALTIMETER,
+            batt_v: BATT_V,
+            current: CURRENT,
+            controls: CONTROLS.clone().unwrap(),
+            link_stats: LINK_STATS.clone().unwrap(),
+        }
+    };
 
     return serde_json::to_string(&data).unwrap_or("Problem serializing data".into());
 }
@@ -387,18 +395,12 @@ fn start_motor(data: RotorPosition) -> Result<(), io::Error> {
     }
 }
 
-
-
-
 /// Request readings from the FC over USB/serial. Cache them as a
 /// global variable. Requesting the readings directly from the frontend could result in
 /// conflicts, where multiple frontends are requesting readings from the WM directly
 /// in too short an interval.
 fn get_data() -> Result<(), io::Error> {
-
-    // todo: fc_ should probably be a global of some sort.
     let fc_ = Fc::new();
-
     if let Ok(mut fc) = fc_ {
         let data = fc.read_all().unwrap_or_default();
 

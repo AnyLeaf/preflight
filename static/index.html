@@ -72,7 +72,7 @@
         </div>
     </div>
 
-    <h2 style="margin-top: 40px;">
+    <h2 style="margin-top: 40px;">Controls</h2>
         <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; grid-gap: 60px;">
             <div style="display: flex; justify-content: center; grid-row: 1/2; grid-column: 1/2;">
                 <h3 style="margin-right: 10px;">Roll</h3>
@@ -181,9 +181,11 @@
 <script src="code.js"></script>
 
 <script>
+    UPDATE_RATE = 2.; // Hz.
+
     window.onload = function() {
         // The calls we make on the frontend don't directly trigger a reading pull
         // from the FC; they get the latest the server has cached.
-        setInterval(update_readings, 500)
+        setInterval(update_readings, 1. / UPDATE_RATE)
     }
 </script>

@@ -36,10 +36,13 @@ function update_readings() {
     })
         .then(response => response.json())
         .then(r => {
-            QUATERNION.w = r.attitude_quat.w
-            QUATERNION.x = r.attitude_quat.x
-            QUATERNION.y = r.attitude_quat.y
-            QUATERNION.z = r.attitude_quat.z
+            // todo: Error handling: Display empty readings etc if we have no result from server.
+
+
+            ATTITUDE_QUAT.w = -r.attitude_quat.w
+            ATTITUDE_QUAT.x = r.attitude_quat.x
+            ATTITUDE_QUAT.y = r.attitude_quat.y
+            ATTITUDE_QUAT.z = r.attitude_quat.z
 
             document.getElementById("altimeter-reading").textContent = format(r.altimeter, 0)
 
@@ -103,35 +106,39 @@ function getCookie() {
     return cookieValue;
 }
 
-// todo: Put in a function
-// Rendering code below for webgl
+
+// Rendering code for WebGL, using Three.js
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 
 const renderer = new THREE.WebGLRenderer({alpha: true});
 // renderer.setSize( window.innerWidth, window.innerHeight );
-renderer.setSize( 400, 300 );
+renderer.setSize( 450, 350 );
 
 let container = document.getElementById("attitude-render")
 container.appendChild( renderer.domElement );
 
-const geometry = new THREE.BoxGeometry( 1, 1, 1 );
-const material = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
+const geometry = new THREE.BoxGeometry( 1, 1, 0.5 );
+// const material = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
+// const material = new THREE.MeshDepthMaterial( );
+const material = new THREE.MeshMatcapMaterial( );
 const cube = new THREE.Mesh( geometry, material );
 scene.add( cube );
 
-let QUATERNION = new THREE.Quaternion();
+let ATTITUDE_QUAT = new THREE.Quaternion();
 
+TAU = 2 * Math.PI
 
-camera.position.z = 5;
+camera.position.z = 1.5;
+// camera.rotation.x = TAU/2
 
-// function animateAttitude() {
-// 	requestAnimationFrame( animateAttitude );
-//
-//     // console.log("Render")
-//
-//     cube.rotation.setFromQuaternion(QUATERNION)
-//
-// 	renderer.render( scene, camera );
-// }
-// animateAttitude();
+function animateAttitude() {
+	requestAnimationFrame( animateAttitude );
+
+    // console.log("Render")
+
+    cube.rotation.setFromQuaternion(ATTITUDE_QUAT)
+
+	renderer.render( scene, camera );
+}
+animateAttitude();

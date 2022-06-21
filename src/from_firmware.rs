@@ -18,7 +18,7 @@ pub const LINK_STATS_PACKET_SIZE: usize = LINK_STATS_SIZE + 2;
 
 pub struct DecodeError {}
 
- // Time between querying the FC for readings, in ms.
+// Time between querying the FC for readings, in ms.
 pub const REFRESH_INTERVAL: u32 = 50;
 
 use num_enum::TryFromPrimitive; // Enum from integer
