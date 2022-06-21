@@ -8,8 +8,7 @@ pub const CRC_POLY: u8 = 0xab;
 pub const QUATERNION_SIZE: usize = F32_BYTES * 4; // Quaternion (4x4 + altimeter + voltage reading + current reading)
 pub const PARAMS_SIZE: usize = QUATERNION_SIZE + F32_BYTES * 3; //
 pub const CONTROLS_SIZE: usize = 18;
-// pub const LINK_STATS_SIZE: usize = F32_BYTES * 4; // Only the first 4 fields.
-pub const LINK_STATS_SIZE: usize = 4; // Only the first 4 fields.
+pub const LINK_STATS_SIZE: usize = 5; // Only the first 4 fields.
 
 // Packet sizes are payload size + 2. Additional data are message type, and CRC.
 pub const PARAMS_PACKET_SIZE: usize = PARAMS_SIZE + 2;

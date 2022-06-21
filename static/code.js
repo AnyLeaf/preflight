@@ -9,11 +9,11 @@ let MOTORS_ARMED = false
 // }
 
 let HEADERS = {
-            "X-CSRFToken": getCookie(),
-            "Content-Type": "application/json; charset=UTF-8",
-            Accept: "application/json",
-            "X-Requested-With": "XMLHttpRequest"
-        }
+    "X-CSRFToken": getCookie(),
+    "Content-Type": "application/json; charset=UTF-8",
+    Accept: "application/json",
+    "X-Requested-With": "XMLHttpRequest"
+}
 
 function format(val, precision) {
     // Format as a string, rounded and 0-padded
@@ -44,6 +44,29 @@ function update_readings() {
             ATTITUDE_QUAT.y = r.attitude_quat.y
             ATTITUDE_QUAT.z = r.attitude_quat.z
 
+            let txPwrText
+            // See firmware: `ElrsTxPower`.
+            switch(r.link_stats.uplink_tx_power) {
+                case 1:
+                    txPwrText = "10mW"
+                    break;
+                case 2:
+                    txPwrText = "25mW"
+                    break;
+                case 8:
+                    txPwrText = "50mW"
+                    break;
+                case 3:
+                    txPwrText = "100mW"
+                    break;
+                case 7:
+                    txPwrText = "250mW"
+                    break;
+                default:
+                    txPwrText = "(unknown)"
+                    break;
+            }
+
             document.getElementById("altimeter-reading").textContent = format(r.altimeter, 0)
 
             document.getElementById("voltage-reading").textContent = format(r.batt_v, 1)
@@ -61,6 +84,7 @@ function update_readings() {
             document.getElementById("rssi-2-reading").textContent = "-" + r.link_stats.uplink_rssi_2 + "dB"
             document.getElementById("link-quality-reading").textContent = r.link_stats.uplink_link_quality + "%"
             document.getElementById("snr-reading").textContent = r.link_stats.uplink_snr
+            document.getElementById("tx-power-reading").textContent = txPwrText
 
         })
 }
@@ -133,12 +157,12 @@ camera.position.z = 1.5;
 // camera.rotation.x = TAU/2
 
 function animateAttitude() {
-	requestAnimationFrame( animateAttitude );
+    requestAnimationFrame( animateAttitude );
 
     // console.log("Render")
 
     cube.rotation.setFromQuaternion(ATTITUDE_QUAT)
 
-	renderer.render( scene, camera );
+    renderer.render( scene, camera );
 }
 animateAttitude();

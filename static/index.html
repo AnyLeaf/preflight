@@ -59,8 +59,8 @@
         <h3 id="altimeter-reading"></h3>
     </div>
 
-    <h2 style="margin-top: 40px;">Power system</h2>
-    <div style="display: flex;">
+    <h2 style="margin-top: 40px; margin-bottom: 10px;">Power system</h2>
+    <div style="display: flex; border: 1px solid #666666; padding: 20px;">
         <div style="display: flex; flex-direction: column; justify-content: center;">
             <h3 style="margin-right: 10px;">Battery voltage</h3>
             <h3 id="voltage-reading"></h3>
@@ -72,105 +72,117 @@
         </div>
     </div>
 
-    <h2 style="margin-top: 40px;">Controls</h2>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; grid-gap: 60px;">
-            <div style="display: flex; justify-content: center; grid-row: 1/2; grid-column: 1/2;">
-                <h3 style="margin-right: 10px;">Roll</h3>
-                <h3 id="control-roll-reading"></h3>
-            </div>
-
-            <div style="display: flex; grid-row: 1/2; grid-column: 2/3;">
-                <h3 style="margin-right: 10px;">Pitch</h3>
-                <h3 id="control-pitch-reading"></h3>
-            </div>
-
-            <div style="display: flex; grid-row: 2/3; grid-column: 1/2;">
-                <h3 style="margin-right: 10px;">Yaw</h3>
-                <h3 id="control-yaw-reading"></h3>
-            </div>
-
-            <div style="display: flex; grid-row: 2/3; grid-column: 2/3;">
-                <h3 style="margin-right: 10px;">Throttle</h3>
-                <h3 id="control-throttle-reading"></h3>
-            </div>
-
-            <div style="display: flex; grid-row: 3/4; grid-column: 1/2;">
-                <h3 style="margin-right: 10px;">Arm switch</h3>
-                <h3 id="control-arm-reading"></h3>
-            </div>
-
-            <div style="display: flex; grid-row: 3/4; grid-column: 2/3;">
-                <h3 style="margin-right: 10px;">Mode control</h3>
-                <h3 id="control-mode-reading"></h3>
-            </div>
+    <h2 style="margin-top: 40px; margin-bottom: 10px;">Controls</h2>
+    <!--        <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; grid-gap: 60px;">-->
+    <div style="display: flex; align-items: center; justify-content: center; border: 1px solid #666666; padding: 20px;">
+        <!--            <div style="display: flex; justify-content: center; grid-row: 1/2; grid-column: 1/2;">-->
+        <div style="display: flex; flex-direction: column; justify-content: center;">
+            <h3 style="margin-right: 10px;">Roll</h3>
+            <h3 id="control-roll-reading"></h3>
         </div>
 
-        <h2 style="margin-top: 40px;">Control link quality</h2>
-        <!--    <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; grid-gap: 60px;">-->
-        <div style="display: flex;">
-            <div style="display: flex; flex-direction: column; justify-content: center;">
-                <h3 style="margin-right: 10px;">RSSI 1</h3>
-                <h3 id="rssi-1-reading"></h3>
-            </div>
-
-            <div style="display: flex; flex-direction: column; justify-content: center; margin-left: 40px;">
-                <h3 style="margin-right: 10px;">RSSI 2</h3>
-                <h3 id="rssi-2-reading"></h3>
-            </div>
-
-            <div style="display: flex; flex-direction: column; justify-content: center; margin-left: 40px;">
-<!--                Percentage of packets succesfully received over last 100. -->
-                <h3 style="margin-right: 10px;">Link quality</h3>
-                <h3 id="link-quality-reading"></h3>
-            </div>
-
-            <div style="display: flex; flex-direction: column; justify-content: center; margin-left: 40px;">
-                <h3 style="margin-right: 10px;">Signal-to-noise ratio</h3>
-                <h3 id="snr-reading"></h3>
-            </div>
+        <!--            <div style="display: flex; grid-row: 1/2; grid-column: 2/3;">-->
+        <div style="display: flex; flex-direction: column; justify-content: center; margin-left: 60px;">
+            <h3 style="margin-right: 10px;">Pitch</h3>
+            <h3 id="control-pitch-reading"></h3>
         </div>
 
+        <!--            <div style="display: flex; grid-row: 2/3; grid-column: 1/2;">-->
+        <div style="display: flex; flex-direction: column; justify-content: center; margin-left: 60px;">
+            <h3 style="margin-right: 10px;">Yaw</h3>
+            <h3 id="control-yaw-reading"></h3>
+        </div>
 
-        <h2 style="margin-top: 100px;">Motor arrangement, spin direction, and testing</h2>
+        <!--            <div style="display: flex; grid-row: 2/3; grid-column: 2/3;">-->
+        <div style="display: flex; flex-direction: column; justify-content: center; margin-left: 60px;">
+            <h3 style="margin-right: 10px;">Throttle</h3>
+            <h3 id="control-throttle-reading"></h3>
+        </div>
+    </div>
 
-        <button
-                style="background-color: #e18888;
+    <div style="display: flex; align-items: center; justify-content: center;">
+        <div style="display: flex; grid-row: 3/4; grid-column: 1/2;">
+            <h3 style="margin-right: 10px;">Arm switch</h3>
+            <h3 id="control-arm-reading"></h3>
+        </div>
+
+        <div style="display: flex; grid-row: 3/4; grid-column: 2/3;">
+            <h3 style="margin-right: 10px;">Mode control</h3>
+            <h3 id="control-mode-reading"></h3>
+        </div>
+    </div>
+
+    <h2 style="margin-top: 40px; margin-bottom: 10px;">Control link quality</h2>
+    <!--    <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; grid-gap: 60px;">-->
+    <div style="display: flex; border: 1px solid #666666; padding: 20px;">
+        <div style="display: flex; flex-direction: column; justify-content: center;">
+            <h3 style="margin-right: 10px;">RSSI 1</h3>
+            <h3 id="rssi-1-reading"></h3>
+        </div>
+
+        <div style="display: flex; flex-direction: column; justify-content: center; margin-left: 40px;">
+            <h3 style="margin-right: 10px;">RSSI 2</h3>
+            <h3 id="rssi-2-reading"></h3>
+        </div>
+
+        <div style="display: flex; flex-direction: column; justify-content: center; margin-left: 40px;">
+            <!--                Percentage of packets succesfully received over last 100. -->
+            <h3 style="margin-right: 10px;">Link quality</h3>
+            <h3 id="link-quality-reading"></h3>
+        </div>
+
+        <div style="display: flex; flex-direction: column; justify-content: center; margin-left: 40px;">
+            <h3 style="margin-right: 10px;">Signal-to-noise ratio</h3>
+            <h3 id="snr-reading"></h3>
+        </div>
+
+        <div style="display: flex; flex-direction: column; justify-content: center; margin-left: 40px;">
+            <h3 style="margin-right: 10px;">Tx power (mW)</h3>
+            <h3 id="tx-power-reading"></h3>
+        </div>
+    </div>
+
+
+    <h2 style="margin-top: 100px;">Motor arrangement, spin direction, and testing</h2>
+
+    <button
+            style="background-color: #e18888;
 "
-                onclick="armMotors()"
-        >
-            ⚠️Enable motors. Don't do this if props are attached!⚠️
-        </button>
+            onclick="armMotors()"
+    >
+        ⚠️Enable motors. Don't do this if props are attached!⚠️
+    </button>
 
-        <!--    ↺-->
+    <!--    ↺-->
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; grid-gap: 60px;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; grid-gap: 60px;">
 
-            <div style="display: flex; flex-direction: column; grid-column: 1 / 2; grid-row: 1 / 2;">
-                <h2>Front-left</h2>
-                <button>Direction: <span>Normal ↻↺</span></button>
-                <!--            todo: Grey out/disable or something if not armed-->
-                <button onclick="startMotor('front-left')">Stopped (Click to start)</button>
-            </div>
-
-            <div style="display: flex; flex-direction: column; grid-column: 2 / 3; grid-row: 1 / 2;">
-                <h2>Front-right</h2>
-                <button>Direction: <span>Normal ↻↺</span></button>
-                <button onclick="startMotor('front-right')">Stopped (Click to start)</button>
-            </div>
-
-            <div style="display: flex; flex-direction: column; grid-column: 1 / 2; grid-row: 2 / 3;">
-                <h2>Aft-left</h2>
-                <button>Direction: <span>Normal ↻↺</span></button>
-                <button onclick="startMotor('aft-left')">Stopped (Click to start)</button>
-            </div>
-
-            <div style="display: flex; flex-direction: column; grid-column: 2 / 3; grid-row: 2 / 3;">
-                <h2>Aft-right</h2>
-                <button>Direction: <span>Normal ↻↺</span></button>
-                <button onclick="startMotor('aft-right')">Stopped (Click to start)</button>
-            </div>
-
+        <div style="display: flex; flex-direction: column; grid-column: 1 / 2; grid-row: 1 / 2;">
+            <h2>Front-left</h2>
+            <button>Direction: <span>Normal ↻↺</span></button>
+            <!--            todo: Grey out/disable or something if not armed-->
+            <button onclick="startMotor('front-left')">Stopped (Click to start)</button>
         </div>
+
+        <div style="display: flex; flex-direction: column; grid-column: 2 / 3; grid-row: 1 / 2;">
+            <h2>Front-right</h2>
+            <button>Direction: <span>Normal ↻↺</span></button>
+            <button onclick="startMotor('front-right')">Stopped (Click to start)</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; grid-column: 1 / 2; grid-row: 2 / 3;">
+            <h2>Aft-left</h2>
+            <button>Direction: <span>Normal ↻↺</span></button>
+            <button onclick="startMotor('aft-left')">Stopped (Click to start)</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; grid-column: 2 / 3; grid-row: 2 / 3;">
+            <h2>Aft-right</h2>
+            <button>Direction: <span>Normal ↻↺</span></button>
+            <button onclick="startMotor('aft-right')">Stopped (Click to start)</button>
+        </div>
+
+    </div>
 
 </div>
 

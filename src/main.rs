@@ -144,9 +144,10 @@ impl From<[u8; LINK_STATS_SIZE]> for LinkStats {
             //     uplink_link_quality: bytes_to_float(&p[8..12]),
             //     uplink_snr: bytes_to_float(&p[12..16]),
             uplink_rssi_1: p[0],
-            uplink_rssi_2: p[0],
-            uplink_link_quality: p[0],
-            uplink_snr: p[0] as i8,
+            uplink_rssi_2: p[1],
+            uplink_link_quality: p[2],
+            uplink_snr: p[3] as i8,
+            uplink_tx_power: p[4],
             ..Default::default() // other fields not used.
         }
     }
@@ -200,7 +201,9 @@ impl Fc {
                         if sn == FC_SERIAL_NUMBER {
                             let port = serialport::new(&port_info.port_name, BAUD)
                                 .open()
-                                .expect("Failed to open serial port");
+                                // todo: Why is the console being spammed with this error?
+                                .unwrap();
+                            // .expect("Failed to open serial port");
 
                             return Ok(Self { ser: port });
                         }
