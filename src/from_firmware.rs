@@ -1,6 +1,6 @@
 //! This module contains types etc that are copy+pasted from the firmware.
 
-const F32_BYTES: usize = 4;
+pub const F32_BYTES: usize = 4;
 
 pub static mut CRC_LUT: [u8; 256] = [0; 256];
 pub const CRC_POLY: u8 = 0xab;
@@ -10,10 +10,16 @@ pub const PARAMS_SIZE: usize = QUATERNION_SIZE + F32_BYTES * 3; //
 pub const CONTROLS_SIZE: usize = 18;
 pub const LINK_STATS_SIZE: usize = 5; // Only the first 4 fields.
 
+pub const MAX_WAYPOINTS: usize = 30;
+pub const WAYPOINT_SIZE: usize = F32_BYTES * 3 + WAYPOINT_MAX_NAME_LEN + 1;
+pub const WAYPOINTS_SIZE: usize = MAX_WAYPOINTS * WAYPOINT_SIZE;
+pub const WAYPOINT_MAX_NAME_LEN: usize = 7;
+
 // Packet sizes are payload size + 2. Additional data are message type, and CRC.
 pub const PARAMS_PACKET_SIZE: usize = PARAMS_SIZE + 2;
 pub const CONTROLS_PACKET_SIZE: usize = CONTROLS_SIZE + 2;
 pub const LINK_STATS_PACKET_SIZE: usize = LINK_STATS_SIZE + 2;
+pub const WAYPOINTS_PACKET_SIZE: usize = WAYPOINTS_SIZE + 2;
 
 pub struct DecodeError {}
 
@@ -71,6 +77,9 @@ pub enum MsgType {
     DisarmMotors = 9,
     StartMotor = 10,
     StopMotor = 11,
+    ReqWaypoints = 12,
+    Updatewaypoints = 13,
+    Waypoints = 14,
 }
 
 impl MsgType {
@@ -88,6 +97,10 @@ impl MsgType {
             Self::DisarmMotors => 0,
             Self::StartMotor => 1,
             Self::StopMotor => 1,
+            Self::StopMotor => 1,
+            Self::ReqWaypoints => 0,
+            Self::Updatewaypoints => 10, // todo?
+            Self::Waypoints => WAYPOINTS_SIZE,
         }
     }
 }
@@ -225,4 +238,13 @@ pub struct LinkStats {
     pub downlink_link_quality: u8,
     /// Downlink - signal-to-noise ratio. 	SNR reported by the TX for telemetry packets
     pub downlink_snr: i8,
+}
+
+#[derive(Default, Clone, Serialize)]
+pub struct Location {
+    // Note: unlike Location in the main program, we ommit location type, and use String for name.
+    pub name: String,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
 }

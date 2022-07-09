@@ -59,6 +59,11 @@
         <h3 id="altimeter-reading"></h3>
     </div>
 
+<!--    <div style="display:flex;">-->
+<!--        <h3 style="margin-right: 10px;">Launch location elevation, meters MSL</h3>-->
+<!--        <input id="launch-elevation" type="number" value="110" />-->
+<!--    </div>-->
+
     <h2 style="margin-top: 40px; margin-bottom: 10px;">Power system</h2>
     <div style="display: flex; border: 1px solid #666666; padding: 20px;">
         <div style="display: flex; flex-direction: column; justify-content: center;">
@@ -113,7 +118,6 @@
     </div>
 
     <h2 style="margin-top: 40px; margin-bottom: 10px;">Control link quality</h2>
-    <!--    <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; grid-gap: 60px;">-->
     <div style="display: flex; border: 1px solid #666666; padding: 20px;">
         <div style="display: flex; flex-direction: column; justify-content: center;">
             <h3 style="margin-right: 10px;">RSSI 1</h3>
@@ -184,6 +188,10 @@
 
     </div>
 
+<!--    todo: Consider placing steerpoints on a sep page, or hidden with a button-->
+        <h2 style="margin-top: 40px; margin-bottom: 10px;">Waypoints</h2>
+    <div id="waypoints" style="display: flex; border: 1px solid #666666; padding: 20px;"></div>
+
 </div>
 
 </body>
@@ -198,6 +206,6 @@
     window.onload = function() {
         // The calls we make on the frontend don't directly trigger a reading pull
         // from the FC; they get the latest the server has cached.
-        setInterval(update_readings, 1. / UPDATE_RATE)
+        setInterval(update_readings, 1_000. / UPDATE_RATE)
     }
 </script>

@@ -16,12 +16,12 @@ use serde_json;
 
 use rocket_contrib::serve::StaticFiles;
 
-use std::io::Read;
 use std::{
     convert::TryInto,
     f32::consts::TAU,
-    io,
-    time::{Duration, Instant},
+    io::{self, Read}, mem,
+    time::{Duration, Instant, self},
+    thread
 };
 
 use chrono;
@@ -43,6 +43,11 @@ static mut ATTITUDE: Quaternion = Quaternion {
 };
 static mut CONTROLS: Option<ChannelData> = None;
 static mut LINK_STATS: Option<LinkStats> = None;
+// static mut WAYPOINTS: [Option<Location>; MAX_WAYPOINTS] = unsafe { mem::zeroed() };
+static mut WAYPOINTS: [Option<Location>; MAX_WAYPOINTS] = [
+    None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+    None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+]; // todo lol
 static mut ALTIMETER: f32 = 0.;
 static mut BATT_V: f32 = 0.;
 static mut CURRENT: f32 = 0.;
@@ -70,6 +75,7 @@ struct ReadData {
     current: f32,
     controls: ChannelData,
     link_stats: LinkStats,
+    waypoints: [Option<Location>; MAX_WAYPOINTS],
 }
 
 // Code in this section is a reverse of buffer <--> struct conversion in `usb_cfg`.
@@ -136,7 +142,6 @@ impl From<[u8; CONTROLS_SIZE]> for ChannelData {
 }
 
 impl From<[u8; LINK_STATS_SIZE]> for LinkStats {
-    /// 4 f32s = 16. In the order we have defined in the struct.
     fn from(p: [u8; LINK_STATS_SIZE]) -> Self {
         LinkStats {
             //     uplink_rssi_1: bytes_to_float(&p[0..4]),
@@ -152,6 +157,41 @@ impl From<[u8; LINK_STATS_SIZE]> for LinkStats {
         }
     }
 }
+
+// impl From<[u8; WAYPOINTS_SIZE]> for [Option<Location>; MAX_WAYPOINTS] {
+/// Standalone fn instead of impl due to a Rust restriction.
+fn waypoints_from_buf(w: [u8; WAYPOINTS_SIZE]) -> [Option<Location>; MAX_WAYPOINTS] {
+    // let mut result = [None; MAX_WAYPOINTS];
+    let mut result = [(); MAX_WAYPOINTS].map(|_| Option::<Location>::default());
+
+    for i in 0..MAX_WAYPOINTS {
+        let wp_start_i = i * WAYPOINT_SIZE;
+
+        // First bit per waypoint indicates if the Waypoint is used or not.
+        // ie if 0, leave as None.
+        if w[wp_start_i] == 1 {
+            let name =
+                std::str::from_utf8(&w[wp_start_i + 1..wp_start_i + 1 + WAYPOINT_MAX_NAME_LEN])
+                    .unwrap();
+
+            let coords_start_i = wp_start_i + 1 + WAYPOINT_MAX_NAME_LEN;
+
+            let x = bytes_to_float(&w[coords_start_i..coords_start_i + 4]);
+            let y = bytes_to_float(&w[coords_start_i + 4..coords_start_i + 8]);
+            let z = bytes_to_float(&w[coords_start_i + 8..coords_start_i + 12]);
+
+            result[i] = Some(Location {
+                name: name.to_owned(),
+                x,
+                y,
+                z,
+            });
+        }
+    }
+
+    result
+}
+// }
 
 impl FromDataSimple for RotorPosition {
     type Error = String;
@@ -228,20 +268,7 @@ impl Fc {
             &[MsgType::ReqParams as u8],
             MsgType::ReqParams.payload_size() as u8 + 1,
         );
-        let crc_tx_controls = calc_crc(
-            unsafe { &CRC_LUT },
-            &[MsgType::ReqControls as u8],
-            MsgType::ReqControls.payload_size() as u8 + 1,
-        );
-        let crc_tx_link_stats = calc_crc(
-            unsafe { &CRC_LUT },
-            &[MsgType::ReqLinkStats as u8],
-            MsgType::ReqLinkStats.payload_size() as u8 + 1,
-        );
-
         let xmit_buf_params = &[MsgType::ReqParams as u8, crc_tx_params];
-        let xmit_buf_controls = &[MsgType::ReqControls as u8, crc_tx_controls];
-        let xmit_buf_link_stats = &[MsgType::ReqLinkStats as u8, crc_tx_link_stats];
 
         self.ser.write(xmit_buf_params)?;
 
@@ -252,26 +279,66 @@ impl Fc {
             rx_buf[1..QUATERNION_SIZE + 1].try_into().unwrap();
         result.attitude_quat = attitude_data.into();
 
-        self.ser.write(xmit_buf_controls)?;
+        let crc_tx_controls = calc_crc(
+            unsafe { &CRC_LUT },
+            &[MsgType::ReqControls as u8],
+            MsgType::ReqControls.payload_size() as u8 + 1,
+        );
+        let xmit_buf_controls = &[MsgType::ReqControls as u8, crc_tx_controls];
+
+        // self.ser.write(xmit_buf_controls)?;  // todo put back
 
         // let mut rx_buf = [0; CONTROLS_SIZE + 2]; // todo: Bogus leading 1?
         let mut rx_buf = [0; CONTROLS_SIZE + 2];
         self.ser.read(&mut rx_buf)?;
 
+
+        thread::sleep(time::Duration::from_millis(5)); // todo TS
+
         let controls_data: [u8; CONTROLS_SIZE] = rx_buf[1..CONTROLS_SIZE + 1].try_into().unwrap();
         result.controls = controls_data.into();
 
+        let crc_tx_link_stats = calc_crc(
+            unsafe { &CRC_LUT },
+            &[MsgType::ReqLinkStats as u8],
+            MsgType::ReqLinkStats.payload_size() as u8 + 1,
+        );
+        let xmit_buf_link_stats = &[MsgType::ReqLinkStats as u8, crc_tx_link_stats];
+
         // todo: DRY between these calls
-        self.ser.write(xmit_buf_link_stats)?;
+        // self.ser.write(xmit_buf_link_stats)?;  // todo put back
 
         let mut rx_buf = [0; LINK_STATS_SIZE + 2];
         self.ser.read(&mut rx_buf)?;
+
+        thread::sleep(time::Duration::from_millis(5)); // todo TS
 
         let link_stats_data: [u8; LINK_STATS_SIZE] =
             rx_buf[1..LINK_STATS_SIZE + 1].try_into().unwrap();
         result.link_stats = link_stats_data.into();
 
-        // println!("Payload ctrls: {:?}", payload_controls);
+        let crc_waypoints = calc_crc(
+            unsafe { &CRC_LUT },
+            &[MsgType::ReqWaypoints as u8],
+            MsgType::ReqWaypoints.payload_size() as u8 + 1,
+        );
+        let xmit_buf_waypoints = &[MsgType::ReqWaypoints as u8, crc_waypoints];
+
+        // self.ser.write(xmit_buf_waypoints)?; // todo put back
+
+        let mut rx_buf = [0; WAYPOINTS_SIZE + 2];
+        self.ser.read(&mut rx_buf)?;
+
+        thread::sleep(time::Duration::from_millis(5)); // todo TS
+
+        let mut wp_buf = [0; WAYPOINTS_SIZE];
+        wp_buf.clone_from_slice(&rx_buf[1..WAYPOINTS_SIZE + 1]);
+
+        println!("WP BUF: {:?}", wp_buf);
+
+        let waypoints_data = waypoints_from_buf(wp_buf);
+
+        result.waypoints = waypoints_data;
 
         let payload_size = MsgType::ReqParams.payload_size();
         // let crc_rx_expected = calc_crc(
@@ -346,6 +413,7 @@ fn send_data() -> String {
             current: CURRENT,
             controls: CONTROLS.clone().unwrap(),
             link_stats: LINK_STATS.clone().unwrap(),
+            waypoints: WAYPOINTS.clone(),
         }
     };
 
@@ -435,6 +503,7 @@ fn main() {
         LAST_CONTROLS_UPDATE = Some(Instant::now());
         CONTROLS = Some(Default::default());
         LINK_STATS = Some(Default::default());
+        WAYPOINTS = [(); MAX_WAYPOINTS].map(|_| Option::<Location>::default());
     }
 
     crc_init(unsafe { &mut CRC_LUT }, CRC_POLY);
@@ -448,7 +517,7 @@ fn main() {
 
     let config = Config::build(Environment::Staging)
         // .address("1.2.3.4")
-        .port(80) // 80 means default, ie users can just go to localhost
+        .port(30)
         .log_level(LoggingLevel::Critical) // Don't show the user the connections.
         .finalize()
         .expect("Problem setting up our custom config");
