@@ -49,6 +49,7 @@ static mut WAYPOINTS: [Option<Location>; MAX_WAYPOINTS] = [
     None, None, None, None, None, None, None, None, None, None, None, None, None, None,
 ]; // todo lol
 static mut ALTIMETER: f32 = 0.;
+static mut ALTIMETER_AGL: f32 = 0.;
 static mut BATT_V: f32 = 0.;
 static mut CURRENT: f32 = 0.;
 
@@ -71,6 +72,7 @@ fn to_degrees(v: f32) -> f32 {
 struct ReadData {
     attitude_quat: Quaternion,
     altimeter: f32,
+    altimeter_agl: Option<f32>,
     batt_v: f32,
     current: f32,
     controls: ChannelData,
@@ -270,14 +272,36 @@ impl Fc {
         );
         let xmit_buf_params = &[MsgType::ReqParams as u8, crc_tx_params];
 
+        // Write the buffer requesting params from the FC.
         self.ser.write(xmit_buf_params)?;
 
+        // Read the params passed by the FC in response.
         let mut rx_buf = [0; PARAMS_SIZE + 2];
         self.ser.read(&mut rx_buf)?;
 
+        // The order (or equivalently indices) of params here must match the FC firmware. Use it
+        // as a reference.
+        let mut i = 1;
+
         let attitude_data: [u8; QUATERNION_SIZE] =
-            rx_buf[1..QUATERNION_SIZE + 1].try_into().unwrap();
+            rx_buf[i..QUATERNION_SIZE + i].try_into().unwrap();
         result.attitude_quat = attitude_data.into();
+        i += QUATERNION_SIZE;
+
+        result.altimeter = f32::from_be_bytes(rx_buf[i..F32_BYTES + i]);
+        i += F32_BYTES;
+
+        result.altimeter_agl = match rx_buf[i] {
+            0 => None,
+            1 => Some(f32::from_be_bytes(rx_buf[i + 1..F32_BYTES + i + 1])),
+        };
+        i += F32_BYTES + 1;
+
+        result.batt_v = f32::from_be_bytes(rx_buf[i..F32_BYTES + i]);
+        i += F32_BYTES;
+
+        result.current = f32::from_be_bytes(rx_buf[i..F32_BYTES + i]);
+        i += F32_BYTES;
 
         let crc_tx_controls = calc_crc(
             unsafe { &CRC_LUT },
@@ -286,7 +310,7 @@ impl Fc {
         );
         let xmit_buf_controls = &[MsgType::ReqControls as u8, crc_tx_controls];
 
-        // self.ser.write(xmit_buf_controls)?;  // todo put back
+        self.ser.write(xmit_buf_controls)?;
 
         // let mut rx_buf = [0; CONTROLS_SIZE + 2]; // todo: Bogus leading 1?
         let mut rx_buf = [0; CONTROLS_SIZE + 2];
@@ -409,6 +433,7 @@ fn send_data() -> String {
             // params: PARAMS.clone().unwrap(),
             attitude_quat: ATTITUDE,
             altimeter: ALTIMETER,
+            altimeter_agl: ALTIMETER_AGL,
             batt_v: BATT_V,
             current: CURRENT,
             controls: CONTROLS.clone().unwrap(),
@@ -480,6 +505,7 @@ fn get_data() -> Result<(), io::Error> {
         unsafe {
             ATTITUDE = data.attitude_quat;
             ALTIMETER = data.altimeter;
+            ALTIMETER_AGL = datadata.altimeter_agl;
             BATT_V = data.batt_v;
             CURRENT = data.current;
             CONTROLS = Some(data.controls);

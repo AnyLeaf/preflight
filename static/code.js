@@ -68,6 +68,7 @@ function update_readings() {
             }
 
             document.getElementById("altimeter-reading").textContent = format(r.altimeter, 0)
+            document.getElementById("altimeter-agl-reading").textContent = format(r.altimeter_agl, 0)
 
             document.getElementById("voltage-reading").textContent = format(r.batt_v, 1)
             document.getElementById("current-reading").textContent = format(r.current, 1)

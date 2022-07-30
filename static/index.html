@@ -53,10 +53,16 @@
 
     </div>
 
-    <h2>Altimeter</h2>
+    <h2>Altimeter (barometric)</h2>
     <div style="display:flex;">
-        <h3 style="margin-right: 10px;">Altitude, in meters MSL. Altitude in use will show in relation to launch altitude.</h3>
+        <h3 style="margin-right: 10px;">Altitude, in meters MSL. Altitude in use will show relative to launch altitude.</h3>
         <h3 id="altimeter-reading"></h3>
+    </div>
+
+    <h2>Altimeter (Time-of-flight)</h2>
+    <div style="display:flex;">
+        <h3 style="margin-right: 10px;">Altitude, in meters AGL.</h3>
+        <h3 id="altimeter-agl-reading"></h3>
     </div>
 
 <!--    <div style="display:flex;">-->
@@ -186,6 +192,17 @@
             <button onclick="startMotor('aft-right')">Stopped (Click to start)</button>
         </div>
 
+    </div>
+
+    <h2 style="margin-top: 100px;">Servo mapping, range, and testing</h2>
+
+    <div style="display: flex">
+        <h4>Set left elevon position</h4>
+        <input type="number" value="0."/>
+        <h4>Set right elevon position</h4>
+        <input type="number" value="0."/>
+        <button>Swap left elevon direction</button>
+        <button>Swap right elevon direction</button>
     </div>
 
 <!--    todo: Consider placing steerpoints on a sep page, or hidden with a button-->

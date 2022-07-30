@@ -6,7 +6,7 @@ pub static mut CRC_LUT: [u8; 256] = [0; 256];
 pub const CRC_POLY: u8 = 0xab;
 
 pub const QUATERNION_SIZE: usize = F32_BYTES * 4; // Quaternion (4x4 + altimeter + voltage reading + current reading)
-pub const PARAMS_SIZE: usize = QUATERNION_SIZE + F32_BYTES * 3; //
+pub const PARAMS_SIZE: usize = QUATERNION_SIZE + F32_BYTES * 4 + 1; //
 pub const CONTROLS_SIZE: usize = 18;
 pub const LINK_STATS_SIZE: usize = 5; // Only the first 4 fields.
 
