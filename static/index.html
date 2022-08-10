@@ -65,10 +65,10 @@
         <h3 id="altimeter-agl-reading"></h3>
     </div>
 
-<!--    <div style="display:flex;">-->
-<!--        <h3 style="margin-right: 10px;">Launch location elevation, meters MSL</h3>-->
-<!--        <input id="launch-elevation" type="number" value="110" />-->
-<!--    </div>-->
+    <!--    <div style="display:flex;">-->
+    <!--        <h3 style="margin-right: 10px;">Launch location elevation, meters MSL</h3>-->
+    <!--        <input id="launch-elevation" type="number" value="110" />-->
+    <!--    </div>-->
 
     <h2 style="margin-top: 40px; margin-bottom: 10px;">Power system</h2>
     <div style="display: flex; border: 1px solid #666666; padding: 20px;">
@@ -152,61 +152,95 @@
         </div>
     </div>
 
+    <section id="quadcopter-specific">
 
-    <h2 style="margin-top: 100px;">Motor arrangement, spin direction, and testing</h2>
+        <h2 style="margin-top: 100px;">Motor arrangement, spin direction, and testing</h2>
 
-    <button
-            style="background-color: #e18888;
+        <button
+                style="background-color: #e18888;
 "
-            onclick="armMotors()"
-    >
-        ⚠️Enable motors. Don't do this if props are attached!⚠️
-    </button>
+                onclick="armMotors()"
+        >
+            ⚠️Enable motors. Don't do this if props are attached!⚠️
+        </button>
 
-    <!--    ↺-->
+        <!--    ↺-->
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; grid-gap: 60px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; grid-gap: 60px;">
 
-        <div style="display: flex; flex-direction: column; grid-column: 1 / 2; grid-row: 1 / 2;">
-            <h2>Front-left</h2>
-            <button>Direction: <span>Normal ↻↺</span></button>
-            <!--            todo: Grey out/disable or something if not armed-->
-            <button onclick="startMotor('front-left')">Stopped (Click to start)</button>
+            <div style="flex-direction: column; grid-column: 1 / 2; grid-row: 1 / 2;">
+                <h2>Front-left</h2>
+                <button>Direction: <span>Normal ↻↺</span></button>
+                <!--            todo: Grey out/disable or something if not armed-->
+                <button onclick="startMotor('front-left')">Stopped (Click to start)</button>
+            </div>
+
+            <div style="flex-direction: column; grid-column: 2 / 3; grid-row: 1 / 2;">
+                <h2>Front-right</h2>
+                <button>Direction: <span>Normal ↻↺</span></button>
+                <button onclick="startMotor('front-right')">Stopped (Click to start)</button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; grid-column: 1 / 2; grid-row: 2 / 3;">
+                <h2>Aft-left</h2>
+                <button>Direction: <span>Normal ↻↺</span></button>
+                <button onclick="startMotor('aft-left')">Stopped (Click to start)</button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; grid-column: 2 / 3; grid-row: 2 / 3;">
+                <h2>Aft-right</h2>
+                <button>Direction: <span>Normal ↻↺</span></button>
+                <button onclick="startMotor('aft-right')">Stopped (Click to start)</button>
+            </div>
+
         </div>
+    </section>
 
-        <div style="display: flex; flex-direction: column; grid-column: 2 / 3; grid-row: 1 / 2;">
-            <h2>Front-right</h2>
-            <button>Direction: <span>Normal ↻↺</span></button>
-            <button onclick="startMotor('front-right')">Stopped (Click to start)</button>
+    <section id="fixedwing-specific" style="width: 1000px;">
+
+        <h2 style="margin-top: 100px;">Elevon servo mapping, range, and testing</h2>
+        <h2>⚠️ Caution: When setting up a new aircraft, don't connect the servos to control
+            surfaces until you've established min and max ranges that won't damage the surfaces.</h2>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr">
+
+            <div style="display: flex; flex-direction: column; grid-column: 1/2;">
+                <h2>Left servo</h2>
+                <!--               These defaults are overridden on init-->
+                <div style="display: flex;"><h2>Min:</h2><input type="number" /></div>
+                <div style="display: flex;"><h2>Max:</h2><input type="number" /></div>
+                <div style="display: flex;"><h2>Center:</h2><input type="number"  /></div>
+                <h3>Current value: </h3><p id="servo-1-setting"></p>
+                <div style="display: flex;"><h2>Set value:</h2><input type="number"  /></div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; grid-column: 2/3;">
+                <h2 id="servo-mapping">L: Servo 1. R: Servo 2</h2>
+            </div>
+
+            <div style="display: flex; flex-direction: column; grid-column: 3/4;">
+                <h2>Left servo</h2>
+                <!--               These defaults are overridden on init-->
+                <div style="display: flex;"><h2>Min:</h2><input type="number" /></div>
+                <div style="display: flex;"><h2>Max:</h2><input type="number" /></div>
+                <div style="display: flex;"><h2>Center:</h2><input type="number"  /></div>
+                <h3>Current value: </h3><p id="servo-2-setting"></p>
+                <div style="display: flex;"><h2>Set value:</h2><input type="number"  /></div>
+            </div>
+
+<!--            <div style="display: flex">-->
+<!--                <h4>Set left elevon position</h4>-->
+<!--                <input type="number" value="0."/>-->
+<!--                <h4>Set right elevon position</h4>-->
+<!--                <input type="number" value="0."/>-->
+<!--                <button>Swap left elevon direction</button>-->
+<!--                <button>Swap right elevon direction</button>-->
+<!--            </div>-->
         </div>
+    </section>
 
-        <div style="display: flex; flex-direction: column; grid-column: 1 / 2; grid-row: 2 / 3;">
-            <h2>Aft-left</h2>
-            <button>Direction: <span>Normal ↻↺</span></button>
-            <button onclick="startMotor('aft-left')">Stopped (Click to start)</button>
-        </div>
-
-        <div style="display: flex; flex-direction: column; grid-column: 2 / 3; grid-row: 2 / 3;">
-            <h2>Aft-right</h2>
-            <button>Direction: <span>Normal ↻↺</span></button>
-            <button onclick="startMotor('aft-right')">Stopped (Click to start)</button>
-        </div>
-
-    </div>
-
-    <h2 style="margin-top: 100px;">Servo mapping, range, and testing</h2>
-
-    <div style="display: flex">
-        <h4>Set left elevon position</h4>
-        <input type="number" value="0."/>
-        <h4>Set right elevon position</h4>
-        <input type="number" value="0."/>
-        <button>Swap left elevon direction</button>
-        <button>Swap right elevon direction</button>
-    </div>
-
-<!--    todo: Consider placing steerpoints on a sep page, or hidden with a button-->
-        <h2 style="margin-top: 40px; margin-bottom: 10px;">Waypoints</h2>
+    <!--    todo: Consider placing steerpoints on a sep page, or hidden with a button-->
+    <h2 style="margin-top: 40px; margin-bottom: 10px;">Waypoints</h2>
     <div id="waypoints" style="display: flex; border: 1px solid #666666; padding: 20px;"></div>
 
 </div>

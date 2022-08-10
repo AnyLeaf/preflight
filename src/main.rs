@@ -34,7 +34,7 @@ mod from_firmware;
 use from_firmware::*;
 
 // pub static mut PARAMS: Option<Params> = None;
-// todo: Don't make this static muts. Find some other way.
+// todo: Don't make this static muts. Find some other way. Probably some combination of mutex and RC.
 static mut ATTITUDE: Quaternion = Quaternion {
     w: 0.,
     x: 0.,
@@ -49,7 +49,7 @@ static mut WAYPOINTS: [Option<Location>; MAX_WAYPOINTS] = [
     None, None, None, None, None, None, None, None, None, None, None, None, None, None,
 ]; // todo lol
 static mut ALTIMETER: f32 = 0.;
-static mut ALTIMETER_AGL: f32 = 0.;
+static mut ALTIMETER_AGL: Option<f32> = None;
 static mut BATT_V: f32 = 0.;
 static mut CURRENT: f32 = 0.;
 
@@ -288,19 +288,19 @@ impl Fc {
         result.attitude_quat = attitude_data.into();
         i += QUATERNION_SIZE;
 
-        result.altimeter = f32::from_be_bytes(rx_buf[i..F32_BYTES + i]);
+        result.altimeter = f32::from_be_bytes(rx_buf[i..F32_BYTES + i].try_into().unwrap());
         i += F32_BYTES;
 
         result.altimeter_agl = match rx_buf[i] {
             0 => None,
-            1 => Some(f32::from_be_bytes(rx_buf[i + 1..F32_BYTES + i + 1])),
+            _ => Some(f32::from_be_bytes(rx_buf[i + 1..F32_BYTES + i + 1].try_into().unwrap())),
         };
         i += F32_BYTES + 1;
 
-        result.batt_v = f32::from_be_bytes(rx_buf[i..F32_BYTES + i]);
+        result.batt_v = f32::from_be_bytes(rx_buf[i..F32_BYTES + i].try_into().unwrap());
         i += F32_BYTES;
 
-        result.current = f32::from_be_bytes(rx_buf[i..F32_BYTES + i]);
+        result.current = f32::from_be_bytes(rx_buf[i..F32_BYTES + i].try_into().unwrap());
         i += F32_BYTES;
 
         let crc_tx_controls = calc_crc(
@@ -505,7 +505,7 @@ fn get_data() -> Result<(), io::Error> {
         unsafe {
             ATTITUDE = data.attitude_quat;
             ALTIMETER = data.altimeter;
-            ALTIMETER_AGL = datadata.altimeter_agl;
+            ALTIMETER_AGL = data.altimeter_agl;
             BATT_V = data.batt_v;
             CURRENT = data.current;
             CONTROLS = Some(data.controls);
