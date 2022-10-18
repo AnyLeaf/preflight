@@ -1,5 +1,5 @@
 [package]
-name = "quadcopter_preflight"
+name = "preflight"
 version = "1.0.0"
 authors = ["David O'Connor <david.alan.oconnor@gmail.com>"]
 edition = "2021"

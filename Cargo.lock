@@ -772,6 +772,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb9f9e6e233e5c4a35559a617bf40a4ec447db2e84c20b55a6f83167b7e57872"
 
 [[package]]
+name = "preflight"
+version = "1.0.0"
+dependencies = [
+ "chrono",
+ "local_ipaddress",
+ "num_enum",
+ "rocket",
+ "rocket_contrib",
+ "serde",
+ "serde_json",
+ "serialport",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "0.4.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -787,20 +801,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd96a1e8ed2596c337f8eae5f24924ec83f5ad5ab21ea8e455d3566c69fbcaf7"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "quadcopter_preflight"
-version = "1.0.0"
-dependencies = [
- "chrono",
- "local_ipaddress",
- "num_enum",
- "rocket",
- "rocket_contrib",
- "serde",
- "serde_json",
- "serialport",
 ]
 
 [[package]]

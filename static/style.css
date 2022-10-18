@@ -21,6 +21,11 @@ button {
     grid-template-rows: 1fr 1fr;
     grid-template-columns: 1fr 1fr;
 }
+
+.servo-setting {
+    width: 160px;
+    height: 40px;
+}
 /*}*/
 
 /*@media (max-width: 800px) {*/

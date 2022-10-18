@@ -4,6 +4,8 @@
 #[macro_use]
 extern crate rocket;
 
+// todo: So much repeated code etc here!!!
+
 use rocket::{
     config::{Config, Environment, LoggingLevel},
     data::{Data, FromDataSimple, Outcome},
@@ -19,9 +21,9 @@ use rocket_contrib::serve::StaticFiles;
 use std::{
     convert::TryInto,
     f32::consts::TAU,
-    io::{self, Read}, mem,
-    time::{Duration, Instant, self},
-    thread
+    io::{self, Read},
+    mem, thread,
+    time::{self, Duration, Instant},
 };
 
 use chrono;
@@ -29,9 +31,9 @@ use chrono;
 use local_ipaddress;
 use serialport::{self, SerialPortType};
 
-mod from_firmware;
+mod types;
 
-use from_firmware::*;
+use types::*;
 
 // pub static mut PARAMS: Option<Params> = None;
 // todo: Don't make this static muts. Find some other way. Probably some combination of mutex and RC.
@@ -62,6 +64,8 @@ pub static mut AIRCRAFT_TYPE: AircraftType = AircraftType::Quadcopter;
 const FC_SERIAL_NUMBER: &'static str = "AN";
 
 const BAUD: u32 = 9_600;
+
+
 
 /// Convert radians to degrees
 fn to_degrees(v: f32) -> f32 {
@@ -217,6 +221,34 @@ impl FromDataSimple for RotorPosition {
     }
 }
 
+#[derive(Debug)]
+struct SetServoPositionData {
+    servo: ServoWingPosition,
+    value: f32
+}
+
+impl FromDataSimple for SetServoPositionData{
+    type Error = String;
+
+    fn from_data(req: &Request, data: Data) -> Outcome<Self, String> {
+
+        let mut contents = String::new();
+        data.open().read_to_string(&mut contents).unwrap();
+
+        let servo = match contents.as_ref() {
+            "left" => Self::Left,
+            "right" => Self::Right,
+            _ => panic!("Invalid servo passed from the frontend."),
+        };
+
+        // todo: How do we do this??
+        Success(Self {
+            servo,
+
+        })
+    }
+}
+
 // End code reversed from `quadcopter`.
 
 // todo: Baud cfg?
@@ -266,7 +298,7 @@ impl Fc {
         let mut result = ReadData::default();
 
         let crc_tx_params = calc_crc(
-            unsafe { &CRC_LUT },
+            &CRC_LUT,
             &[MsgType::ReqParams as u8],
             MsgType::ReqParams.payload_size() as u8 + 1,
         );
@@ -293,7 +325,9 @@ impl Fc {
 
         result.altimeter_agl = match rx_buf[i] {
             0 => None,
-            _ => Some(f32::from_be_bytes(rx_buf[i + 1..F32_BYTES + i + 1].try_into().unwrap())),
+            _ => Some(f32::from_be_bytes(
+                rx_buf[i + 1..F32_BYTES + i + 1].try_into().unwrap(),
+            )),
         };
         i += F32_BYTES + 1;
 
@@ -304,7 +338,7 @@ impl Fc {
         i += F32_BYTES;
 
         let crc_tx_controls = calc_crc(
-            unsafe { &CRC_LUT },
+            &CRC_LUT,
             &[MsgType::ReqControls as u8],
             MsgType::ReqControls.payload_size() as u8 + 1,
         );
@@ -316,14 +350,13 @@ impl Fc {
         let mut rx_buf = [0; CONTROLS_SIZE + 2];
         self.ser.read(&mut rx_buf)?;
 
-
         thread::sleep(time::Duration::from_millis(5)); // todo TS
 
         let controls_data: [u8; CONTROLS_SIZE] = rx_buf[1..CONTROLS_SIZE + 1].try_into().unwrap();
         result.controls = controls_data.into();
 
         let crc_tx_link_stats = calc_crc(
-            unsafe { &CRC_LUT },
+            &CRC_LUT,
             &[MsgType::ReqLinkStats as u8],
             MsgType::ReqLinkStats.payload_size() as u8 + 1,
         );
@@ -342,7 +375,7 @@ impl Fc {
         result.link_stats = link_stats_data.into();
 
         let crc_waypoints = calc_crc(
-            unsafe { &CRC_LUT },
+            &CRC_LUT,
             &[MsgType::ReqWaypoints as u8],
             MsgType::ReqWaypoints.payload_size() as u8 + 1,
         );
@@ -366,7 +399,7 @@ impl Fc {
 
         let payload_size = MsgType::ReqParams.payload_size();
         // let crc_rx_expected = calc_crc(
-        //     unsafe { &CRC_LUT },
+        //     &CRC_LUT,
         //     &rx_buf[..payload_size + 1],
         //     payload_size as u8 + 1,
         // );
@@ -377,7 +410,7 @@ impl Fc {
     pub fn send_arm_command(&mut self) -> Result<(), io::Error> {
         let msg_type = MsgType::ArmMotors;
         let crc = calc_crc(
-            unsafe { &CRC_LUT },
+            &CRC_LUT,
             &[msg_type as u8],
             msg_type.payload_size() as u8 + 1,
         );
@@ -390,11 +423,53 @@ impl Fc {
     pub fn send_disarm_command(&mut self) -> Result<(), io::Error> {
         let msg_type = MsgType::DisarmMotors;
         let crc = calc_crc(
-            unsafe { &CRC_LUT },
+            &CRC_LUT,
             &[msg_type as u8],
             msg_type.payload_size() as u8 + 1,
         );
         let xmit_buf = &[msg_type as u8, crc];
+        self.ser.write(xmit_buf)?;
+
+        Ok(())
+    }
+
+    // todo: These are incomplete. you need to pass which motor etc.
+    pub fn send_start_motor_command(&mut self, motor: RotorPosition) -> Result<(), io::Error> {
+        let msg_type = MsgType::StartMotor;
+        let crc = calc_crc(
+            &CRC_LUT,
+            &[msg_type as u8],
+            msg_type.payload_size() as u8 + 1,
+        );
+        let xmit_buf = &[msg_type as u8, motor as u8, crc];
+        self.ser.write(xmit_buf)?;
+
+        Ok(())
+    }
+
+    pub fn send_stop_motor_command(&mut self, motor: RotorPosition) -> Result<(), io::Error> {
+        let msg_type = MsgType::StopMotor;
+        let crc = calc_crc(
+            &CRC_LUT,
+            &[msg_type as u8],
+            msg_type.payload_size() as u8 + 1,
+        );
+        let xmit_buf = &[msg_type as u8, motor as u8, crc];
+        self.ser.write(xmit_buf)?;
+
+        Ok(())
+    }
+
+    pub fn send_set_servo_posit_command(&mut self, servo_posit: ServoWingPosition, value: f32) -> Result<(), io::Error> {
+        let msg_type = MsgType::SetServoPosit;
+        let crc = calc_crc(
+            &CRC_LUT,
+            &[msg_type as u8],
+            msg_type.payload_size() as u8 + 1,
+        );
+
+        let v = value.to_be_bytes();
+        let xmit_buf = &[msg_type as u8, servo_posit as u8, v[0], v[1], v[2], v[3], crc];
         self.ser.write(xmit_buf)?;
 
         Ok(())
@@ -478,7 +553,49 @@ fn start_motor(data: RotorPosition) -> Result<(), io::Error> {
     let fc_ = Fc::new();
 
     if let Ok(mut fc) = fc_ {
-        fc.send_disarm_command();
+        fc.send_start_motor_command(data);
+
+        fc.close();
+
+        Ok(())
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Can't find the flight controller.",
+        ))
+    }
+}
+
+/// Start a motor.
+#[post("/stop_motor", data = "<data>")]
+fn stop_motor(data: RotorPosition) -> Result<(), io::Error> {
+    println!("Stopping motor {:?}", data);
+
+    let fc_ = Fc::new();
+
+    if let Ok(mut fc) = fc_ {
+        fc.send_stop_motor_command(data);
+
+        fc.close();
+
+        Ok(())
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Can't find the flight controller.",
+        ))
+    }
+}
+
+/// Start a motor.
+#[post("/set_servo_position", data = "<data>")]
+fn set_servo_position(data: SetServoPositionData) -> Result<(), io::Error> {
+    println!("Set servo{:?}", data);
+
+    let fc_ = Fc::new();
+
+    if let Ok(mut fc) = fc_ {
+        fc.send_set_servo_posit_command(data);
 
         fc.close();
 

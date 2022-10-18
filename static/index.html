@@ -204,14 +204,15 @@
 
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr">
 
+            <h2>Set servo PWM high times. All times are in ms.</h2>
             <div style="display: flex; flex-direction: column; grid-column: 1/2;">
                 <h2>Left servo</h2>
                 <!--               These defaults are overridden on init-->
-                <div style="display: flex;"><h2>Min:</h2><input type="number" /></div>
-                <div style="display: flex;"><h2>Max:</h2><input type="number" /></div>
-                <div style="display: flex;"><h2>Center:</h2><input type="number"  /></div>
+                <div><h2>Min:</h2><button onClick="set-min-1">Set</button></div>
+                <div><h2>Max:</h2><input class="servo-setting" type="range" min="0.5" max="2.0" step="0.1"  /><button onClick="set-max-1">Set</button></div>
+                <div><h2>Center:</h2><input class="servo-setting" type="range" min="0.5" max="2.0" step="0.1" /><button onClick="set-center-1">Set</button></div>
                 <h3>Current value: </h3><p id="servo-1-setting"></p>
-                <div style="display: flex;"><h2>Set value:</h2><input type="number"  /></div>
+                <div><h2>Set position:</h2><input id="servo-posit-left" class="servo-setting" type="range" min="0.5" max="2.0" step="0.1" /><button onClick="setServoPosition('left')">Set</button></div>
             </div>
 
             <div style="display: flex; flex-direction: column; grid-column: 2/3;">
@@ -221,11 +222,11 @@
             <div style="display: flex; flex-direction: column; grid-column: 3/4;">
                 <h2>Left servo</h2>
                 <!--               These defaults are overridden on init-->
-                <div style="display: flex;"><h2>Min:</h2><input type="number" /></div>
-                <div style="display: flex;"><h2>Max:</h2><input type="number" /></div>
-                <div style="display: flex;"><h2>Center:</h2><input type="number"  /></div>
+                <div style="display: flex;">Set</button></div>
+                <div style="display: flex;"><h2>Max:</h2><input class="servo-setting" type="number" /><button onClick="set-max-2">Set</button></div>
+                <div style="display: flex;"><h2>Center:</h2><input class="servo-setting" type="number"  /><button onClick="set-center-2">Set</button></div>
                 <h3>Current value: </h3><p id="servo-2-setting"></p>
-                <div style="display: flex;"><h2>Set value:</h2><input type="number"  /></div>
+                <div style="display: flex;"><h2>Set position:</h2><input class="servo-setting" type="number"  /><button onClick="setServoPosition('right')">Set</button></div>
             </div>
 
 <!--            <div style="display: flex">-->

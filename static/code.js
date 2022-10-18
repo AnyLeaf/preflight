@@ -114,6 +114,22 @@ function startMotor(motor) {
         .then(r => {})
 }
 
+function setServoPosition(servo) {
+    let body = {
+        servo: servo,
+        value: parseFloat(document.getElementById("servo-posit-left").value)
+    }
+
+    fetch("/api/set_servo_position", {
+        method: "POST",
+        headers: HEADERS,
+        credentials: "include",
+        body: body
+    })
+        .then(response => response.json())
+        .then(r => {})
+}
+
 function getCookie() {
     let name_ = "csrftoken"
     let cookieValue = null;

@@ -2,8 +2,8 @@
 
 pub const F32_BYTES: usize = 4;
 
-pub static mut CRC_LUT: [u8; 256] = [0; 256];
-pub const CRC_POLY: u8 = 0xab;
+const CRC_POLY: u8 = 0xab;
+const CRC_LUT: [u8; 256] = crc_init(CRC_POLY);
 
 pub const QUATERNION_SIZE: usize = F32_BYTES * 4; // Quaternion (4x4 + altimeter + voltage reading + current reading)
 pub const PARAMS_SIZE: usize = QUATERNION_SIZE + F32_BYTES * 4 + 1; //
@@ -13,6 +13,7 @@ pub const LINK_STATS_SIZE: usize = 5; // Only the first 4 fields.
 pub const MAX_WAYPOINTS: usize = 30;
 pub const WAYPOINT_SIZE: usize = F32_BYTES * 3 + WAYPOINT_MAX_NAME_LEN + 1;
 pub const WAYPOINTS_SIZE: usize = MAX_WAYPOINTS * WAYPOINT_SIZE;
+pub const SET_SERVO_POSIT_SIZE: usize = 1 + F32_BYTES;
 pub const WAYPOINT_MAX_NAME_LEN: usize = 7;
 
 // Packet sizes are payload size + 2. Additional data are message type, and CRC.
@@ -80,6 +81,7 @@ pub enum MsgType {
     ReqWaypoints = 12,
     Updatewaypoints = 13,
     Waypoints = 14,
+    SetServoPosit = 15,
 }
 
 impl MsgType {
@@ -97,10 +99,10 @@ impl MsgType {
             Self::DisarmMotors => 0,
             Self::StartMotor => 1,
             Self::StopMotor => 1,
-            Self::StopMotor => 1,
             Self::ReqWaypoints => 0,
             Self::Updatewaypoints => 10, // todo?
             Self::Waypoints => WAYPOINTS_SIZE,
+            Self::SetServoPosit => SET_SERVO_POSIT_SIZE,
         }
     }
 }
@@ -157,11 +159,12 @@ pub struct ChannelData {
 // }
 
 #[derive(Clone, Copy)]
+#[repr(u8)]
 pub enum Rotor {
-    R1,
-    R2,
-    R3,
-    R4,
+    R1 = 0,
+    R2 = 1,
+    R3 = 2,
+    R4 = 3,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -173,16 +176,42 @@ pub enum RotorPosition {
     AftRight = 3,
 }
 
-pub fn crc_init(lut: &mut [u8; 256], poly: u8) {
-    for i in 0..256 {
-        let mut crc = i as u8;
-        for _ in 0..8 {
-            crc = (crc << 1) ^ (if (crc & 0x80) > 0 { poly } else { 0 });
-        }
-        lut[i] = crc & 0xff;
-    }
+#[derive(Clone, Copy, Debug)]
+pub enum ServoWing {
+    S1,
+    S2,
 }
 
+#[derive(Clone, Copy, Debug)]
+#[repr(u8)]
+pub enum ServoWingPosition {
+    Left = 0,
+    Right = 1,
+}
+
+pub const fn crc_init(poly: u8) -> [u8; 256] {
+    let mut lut = [0; 256];
+
+    let mut i = 0;
+    while i < 256 {
+        // Can't use for loops in const fns
+        let mut crc = i as u8;
+
+        let mut j = 0;
+        while j < 8 {
+            crc = (crc << 1) ^ (if (crc & 0x80) > 0 { poly } else { 0 });
+            j += 1;
+        }
+        lut[i] = crc;
+
+        i += 1;
+    }
+
+    lut
+}
+
+/// CRC8 using a specific poly, includes all bytes from type (buffer[2]) to end of payload.
+/// https://github.com/chris1seto/OzarkRiver/blob/4channel/FlightComputerFirmware/Src/Crsf.c
 pub fn calc_crc(lut: &[u8; 256], data: &[u8], mut size: u8) -> u8 {
     let mut crc = 0;
     let mut i = 0;
